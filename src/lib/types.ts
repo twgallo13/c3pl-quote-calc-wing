@@ -31,12 +31,15 @@ export interface RateCard {
   id: string;
   name: string;
   version: string;
+  version_notes?: string;
   monthly_minimum_cents: number;
   prices: {
     fulfillment: FulfillmentPricing;
     storage: StoragePricing;
     shippingAndHandling: SandHPricing;
   };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // User Input Structure
@@ -45,10 +48,10 @@ export interface ScopeInput {
   averageUnitsPerOrder: number; // UTP
   averageOrderValue: number; // AOV, in dollars
   shippingModel: 'standard' | 'customerAccount';
-  shippingSizeMix: { 
-    small: number; 
-    medium: number; 
-    large: number; 
+  shippingSizeMix: {
+    small: number;
+    medium: number;
+    large: number;
   }; // percentages
 }
 

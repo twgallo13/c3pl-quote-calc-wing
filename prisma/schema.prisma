@@ -13,8 +13,11 @@ model RateCard {
   id                    String @id
   name                  String
   version               String
+  version_notes         String?
   monthly_minimum_cents Int
   prices                Json
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @default(now()) @updatedAt
 
   // Relations
   Quote Quote[]

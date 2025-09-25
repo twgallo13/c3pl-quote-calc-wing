@@ -2,7 +2,8 @@ import { useKV } from '@github/spark/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClockCounterClockwise, Download, User } from '@phosphor-icons/react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ClockCounterClockwise, Download, User, Lock } from '@phosphor-icons/react';
 import type { Quote } from '@/lib/types';
 import { formatCurrency } from '@/lib/calculator';
 
@@ -18,7 +19,7 @@ export default function QuoteHistory() {
       calculation: quote.calculation,
       total: formatCurrency(quote.calculation.finalMonthlyCostCents)
     };
-    
+
     const blob = new Blob([JSON.stringify(quoteData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -59,6 +60,14 @@ export default function QuoteHistory() {
         <div className="space-y-4">
           {quotes.map((quote) => (
             <div key={quote.id} className="border rounded-lg p-4">
+              {/* Version-Locked Banner */}
+              <Alert className="mb-4 border-amber-200 bg-amber-50">
+                <Lock className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <strong>Version-Locked:</strong> This quote is locked to Rate Card: {quote.rateCardId.replace('rc-', '').replace('-2025', '')} {quote.rateCardVersion} (as of {new Date(quote.createdAt).toLocaleDateString()})
+                </AlertDescription>
+              </Alert>
+
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -74,9 +83,9 @@ export default function QuoteHistory() {
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {new Date(quote.createdAt).toLocaleDateString()} at{' '}
-                    {new Date(quote.createdAt).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
+                    {new Date(quote.createdAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
                     })}
                   </div>
                 </div>

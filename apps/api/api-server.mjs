@@ -80,6 +80,7 @@ app.post('/api/ratecards', async (req, res) => {
                 id: rateCardData.id,
                 name: rateCardData.name,
                 version: rateCardData.version || 'v1.0.0',
+                version_notes: rateCardData.versionNotes || 'Initial version',
                 monthly_minimum_cents: rateCardData.monthly_minimum_cents || 0,
                 prices: rateCardData.prices
             }
@@ -124,6 +125,7 @@ app.put('/api/ratecards/:id', async (req, res) => {
             data: {
                 name: updateData.name || existingCard.name,
                 version: newVersion,
+                version_notes: updateData.versionNotes || `Updated to version ${newVersion}`,
                 monthly_minimum_cents: updateData.monthly_minimum_cents ?? existingCard.monthly_minimum_cents,
                 prices: updateData.prices || existingCard.prices
             }
