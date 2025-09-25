@@ -28,33 +28,39 @@ import { Calculator, FloppyDisk, Download } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { RateCard, ScopeInput, QuoteCalculation, Quote } from '@/lib/types';
 import { calculateQuote, formatCurrency, formatPercentage, normalizeShippingSizeMix } from '@/lib/calculator';
+import { sampleRateCards } from '@/lib/sampleData';
+
+// Alias for ScenarioResult to match requested naming
+type ScenarioResult = QuoteCalculation;
+// Alias for calculateScenario to match requested naming
+const calculateScenario = calculateQuote;
 
 export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading }: {
   onQuoteCalculated?: (quote: Quote) => void;
   rateCards: RateCard[];
   loading?: boolean;
 }) {
-  // ...rest of the file remains unchanged, all logic and JSX should be inside this function
-  const [scopeInput, setScopeInput] = useState<ScopeInput>(initialScope);
+  // State hooks as requested
+  const [scope, setScope] = useState<ScopeInput>(initialScope);
+  const [selectedRateCard, setSelectedRateCard] = useState<RateCard>(sampleRateCards[0]);
+  const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(null);
 
-  const [calculation, setCalculation] = useState<QuoteCalculation | null>(null);
+  // Additional state for UI functionality
   const [normalizationHint, setNormalizationHint] = useState<string>('');
   const [shippingMixTotal, setShippingMixTotal] = useState<number>(100);
-
-  const [selectedRateCard, setSelectedRateCard] = useState<RateCard | null>(rateCards?.[0] || null);
   const [clientName, setClientName] = useState<string>('');
   const [quotes, setQuotes] = useState<Quote[]>([]);
 
-  // Recalculate whenever inputs change
+  // Calculation effect - recalculate whenever scope or selectedRateCard changes
   useEffect(() => {
     if (!selectedRateCard) return;
 
     // Calculate shipping mix total
-    const total = scopeInput.shippingSizeMix.small + scopeInput.shippingSizeMix.medium + scopeInput.shippingSizeMix.large;
+    const total = scope.shippingSizeMix.small + scope.shippingSizeMix.medium + scope.shippingSizeMix.large;
     setShippingMixTotal(total);
 
     // Check shipping mix normalization
-    const normalized = normalizeShippingSizeMix(scopeInput.shippingSizeMix);
+    const normalized = normalizeShippingSizeMix(scope.shippingSizeMix);
     if (normalized.wasNormalized) {
       setNormalizationHint(`Shipping percentages auto-normalized from ${total.toFixed(1)}% to 100%`);
     } else if (total < 99.5 || total > 100.5) {
@@ -63,13 +69,13 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
       setNormalizationHint('');
     }
 
-    const result = calculateQuote(selectedRateCard, scopeInput);
-    setCalculation(result);
-  }, [selectedRateCard, scopeInput]);
+    const result = calculateScenario(selectedRateCard, scope);
+    setScenarioResult(result);
+  }, [selectedRateCard, scope]);
 
-  // Unified handler for nested scope changes
+  // Handler Functions as requested
   const handleScopeChange = (category: keyof ScopeInput, field: string, value: number | string) => {
-    setScopeInput(prevScope => {
+    setScope(prevScope => {
       // If the category is an object, spread it; otherwise, just set the value
       if (typeof prevScope[category] === 'object' && prevScope[category] !== null) {
         return {
@@ -88,8 +94,19 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
     });
   };
 
+  const handleTopLevelScopeChange = (field: keyof ScopeInput, value: number | string) => {
+    setScope(prevScope => ({
+      ...prevScope,
+      [field]: value
+    }));
+  };
+
+  const handleRateCardChange = (rateCard: RateCard) => {
+    setSelectedRateCard(rateCard);
+  };
+
   const saveQuote = () => {
-    if (!calculation || !selectedRateCard) return;
+    if (!scenarioResult || !selectedRateCard) return;
 
     const quote: Quote = {
       id: Date.now().toString(),
@@ -97,8 +114,8 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
       createdAt: new Date().toISOString(),
       rateCardId: selectedRateCard.id,
       rateCardVersion: selectedRateCard.version,
-      scopeInput,
-      calculation
+      scopeInput: scope,
+      calculation: scenarioResult
     };
 
     setQuotes(current => [quote, ...current]);
@@ -107,15 +124,15 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
   };
 
   const exportQuote = () => {
-    if (!calculation || !selectedRateCard) return;
+    if (!scenarioResult || !selectedRateCard) return;
 
     const quoteData = {
       client: clientName || 'Prospect',
       rateCard: `${selectedRateCard.name} ${selectedRateCard.version}`,
       date: new Date().toLocaleDateString(),
-      input: scopeInput,
-      calculation,
-      total: formatCurrency(calculation.finalMonthlyCostCents)
+      input: scope,
+      calculation: scenarioResult,
+      total: formatCurrency(scenarioResult.finalMonthlyCostCents)
     };
 
     const blob = new Blob([JSON.stringify(quoteData, null, 2)], { type: 'application/json' });
@@ -143,7 +160,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
               <Calculator size={24} />
               <CardTitle>Quote Calculator</CardTitle>
             </div>
-            <Button variant="outline" onClick={() => setScopeInput(initialScope)}>
+            <Button variant="outline" onClick={() => setScope(initialScope)}>
               Reset
             </Button>
           </CardHeader>
@@ -159,6 +176,32 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                 aria-label="Client Name"
               />
             </div>
+            {/* Basic Parameters */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="monthly-orders">Monthly Orders</Label>
+                <Input
+                  id="monthly-orders"
+                  type="number"
+                  min="0"
+                  value={scope.monthlyOrders}
+                  onChange={e => handleTopLevelScopeChange('monthlyOrders', parseInt(e.target.value) || 0)}
+                  aria-describedby="monthly-orders-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="units-per-order">Average Units per Order</Label>  
+                <Input
+                  id="units-per-order"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={scope.averageUnitsPerOrder}
+                  onChange={e => handleTopLevelScopeChange('averageUnitsPerOrder', parseFloat(e.target.value) || 0)}
+                  aria-describedby="units-per-order-hint"
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
               <p id="monthly-orders-hint">Number of orders expected per month</p>
               <p id="units-per-order-hint">Average number of items per order</p>
@@ -171,8 +214,8 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                 type="number"
                 step="0.01"
                 min="0"
-                value={scopeInput.averageOrderValue}
-                onChange={e => handleScopeChange('averageOrderValue', '', parseFloat(e.target.value) || 0)}
+                value={scope.averageOrderValue}
+                onChange={e => handleTopLevelScopeChange('averageOrderValue', parseFloat(e.target.value) || 0)}
                 aria-describedby="order-value-hint"
               />
               <p id="order-value-hint" className="text-xs text-muted-foreground">
@@ -183,8 +226,8 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
             <div className="space-y-2">
               <Label htmlFor="shipping-model">Shipping Model</Label>
               <Select
-                value={scopeInput.shippingModel}
-                onValueChange={value => handleScopeChange('shippingModel', '', value)}
+                value={scope.shippingModel}
+                onValueChange={value => handleTopLevelScopeChange('shippingModel', value)}
               >
                 <SelectTrigger id="shipping-model" aria-describedby="shipping-model-hint">
                   <SelectValue />
@@ -214,7 +257,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   id="small-units"
                   type="number"
                   min="0"
-                  value={scopeInput.storageRequirements.smallUnits}
+                  value={scope.storageRequirements.smallUnits}
                   onChange={e => handleScopeChange('storageRequirements', 'smallUnits', parseInt(e.target.value) || 0)}
                   aria-describedby="small-units-hint"
                 />
@@ -225,7 +268,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   id="medium-units"
                   type="number"
                   min="0"
-                  value={scopeInput.storageRequirements.mediumUnits}
+                  value={scope.storageRequirements.mediumUnits}
                   onChange={e => handleScopeChange('storageRequirements', 'mediumUnits', parseInt(e.target.value) || 0)}
                   aria-describedby="medium-units-hint"
                 />
@@ -236,7 +279,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   id="large-units"
                   type="number"
                   min="0"
-                  value={scopeInput.storageRequirements.largeUnits}
+                  value={scope.storageRequirements.largeUnits}
                   onChange={e => handleScopeChange('storageRequirements', 'largeUnits', parseInt(e.target.value) || 0)}
                   aria-describedby="large-units-hint"
                 />
@@ -247,7 +290,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   id="pallets"
                   type="number"
                   min="0"
-                  value={scopeInput.storageRequirements.pallets}
+                  value={scope.storageRequirements.pallets}
                   onChange={e => handleScopeChange('storageRequirements', 'pallets', parseInt(e.target.value) || 0)}
                   aria-describedby="pallets-hint"
                 />
@@ -292,7 +335,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   step="0.1"
                   min="0"
                   max="100"
-                  value={scopeInput.shippingSizeMix.small}
+                  value={scope.shippingSizeMix.small}
                   onChange={e => handleScopeChange('shippingSizeMix', 'small', parseFloat(e.target.value) || 0)}
                   aria-describedby="shipping-mix-hint"
                 />
@@ -305,7 +348,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   step="0.1"
                   min="0"
                   max="100"
-                  value={scopeInput.shippingSizeMix.medium}
+                  value={scope.shippingSizeMix.medium}
                   onChange={e => handleScopeChange('shippingSizeMix', 'medium', parseFloat(e.target.value) || 0)}
                   aria-describedby="shipping-mix-hint"
                 />
@@ -318,7 +361,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   step="0.1"
                   min="0"
                   max="100"
-                  value={scopeInput.shippingSizeMix.large}
+                  value={scope.shippingSizeMix.large}
                   onChange={e => handleScopeChange('shippingSizeMix', 'large', parseFloat(e.target.value) || 0)}
                   aria-describedby="shipping-mix-hint"
                 />
@@ -347,11 +390,11 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
         </Card>
         {/* Actions */}
         <div className="flex gap-2">
-          <Button onClick={saveQuote} disabled={!calculation} className="flex-1">
+          <Button onClick={saveQuote} disabled={!scenarioResult} className="flex-1">
             <FloppyDisk size={16} className="mr-2" />
             Save Quote
           </Button>
-          <Button onClick={exportQuote} disabled={!calculation} variant="outline">
+          <Button onClick={exportQuote} disabled={!scenarioResult} variant="outline">
             <Download size={16} className="mr-2" />
             Export
           </Button>
@@ -359,11 +402,11 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
       </div>
       {/* Column 2: Results */}
       <div>
-        {calculation && selectedRateCard && (
+        {scenarioResult && selectedRateCard && (
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl" aria-live="polite" aria-label="Total monthly cost">
-                {formatCurrency(calculation.finalMonthlyCostCents)}
+                {formatCurrency(scenarioResult.finalMonthlyCostCents)}
                 <span className="text-base font-normal text-muted-foreground ml-2">
                   / month
                 </span>
@@ -376,7 +419,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
               {/* Cost Breakdown Table */}
               <Table>
                 <TableBody>
-                  {calculation.lineItems.map((item, index) => (
+                  {scenarioResult.lineItems.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>{item.name}</TableCell>
                       <TableCell className="text-right font-medium" aria-live="polite">
@@ -387,14 +430,14 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   <TableRow className="border-t-2">
                     <TableCell className="font-medium">Subtotal</TableCell>
                     <TableCell className="text-right font-medium" aria-live="polite" aria-label="Subtotal cost">
-                      {formatCurrency(calculation.totalMonthlyCostCents)}
+                      {formatCurrency(scenarioResult.totalMonthlyCostCents)}
                     </TableCell>
                   </TableRow>
-                  {calculation.finalMonthlyCostCents > calculation.totalMonthlyCostCents && (
+                  {scenarioResult.finalMonthlyCostCents > scenarioResult.totalMonthlyCostCents && (
                     <TableRow className="text-accent">
                       <TableCell>Monthly Minimum Applied</TableCell>
                       <TableCell className="text-right font-medium" aria-live="polite" aria-label="Monthly minimum adjustment">
-                        +{formatCurrency(calculation.finalMonthlyCostCents - calculation.totalMonthlyCostCents)}
+                        +{formatCurrency(scenarioResult.finalMonthlyCostCents - scenarioResult.totalMonthlyCostCents)}
                       </TableCell>
                     </TableRow>
                   )}
@@ -407,13 +450,13 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   <div>
                     <div className="text-muted-foreground">Fulfillment</div>
                     <div className="font-medium" aria-live="polite" aria-label="Fulfillment cost per order">
-                      {formatCurrency(calculation.breakdown.fulfillment.selectedBranchCents)}
+                      {formatCurrency(scenarioResult.breakdown.fulfillment.selectedBranchCents)}
                     </div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Shipping</div>
                     <div className="font-medium" aria-live="polite" aria-label="Shipping cost per order">
-                      {formatCurrency(calculation.breakdown.shipping.blendedCostPerOrderCents)}
+                      {formatCurrency(scenarioResult.breakdown.shipping.blendedCostPerOrderCents)}
                     </div>
                   </div>
                 </div>
