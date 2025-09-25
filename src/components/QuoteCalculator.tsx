@@ -36,6 +36,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
 
   const [calculation, setCalculation] = useState<QuoteCalculation | null>(null);
   const [normalizationHint, setNormalizationHint] = useState<string>('');
+  const [shippingMixTotal, setShippingMixTotal] = useState<number>(100);
 
   const selectedRateCard = rateCards?.find(rc => rc.id === selectedRateCardId);
 
@@ -43,10 +44,16 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
   useEffect(() => {
     if (!selectedRateCard) return;
 
+    // Calculate shipping mix total
+    const total = scopeInput.shippingSizeMix.small + scopeInput.shippingSizeMix.medium + scopeInput.shippingSizeMix.large;
+    setShippingMixTotal(total);
+
     // Check shipping mix normalization
     const normalized = normalizeShippingSizeMix(scopeInput.shippingSizeMix);
     if (normalized.wasNormalized) {
-      setNormalizationHint('Shipping percentages were auto-normalized to total 100%');
+      setNormalizationHint(`Shipping percentages auto-normalized from ${total.toFixed(1)}% to 100%`);
+    } else if (total < 99.5 || total > 100.5) {
+      setNormalizationHint(`Warning: Shipping percentages total ${total.toFixed(1)}% (should be 100%)`);
     } else {
       setNormalizationHint('');
     }
@@ -132,15 +139,19 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               placeholder="Enter client name"
+              aria-describedby="client-name-hint"
             />
+            <p id="client-name-hint" className="text-xs text-muted-foreground">
+              Optional: Client name will appear on saved quotes and exports
+            </p>
           </div>
 
           {/* Rate Card Selection */}
           <div className="space-y-2">
-            <Label>Rate Card</Label>
+            <Label htmlFor="rate-card">Rate Card</Label>
             <Select value={selectedRateCardId} onValueChange={setSelectedRateCardId}>
-              <SelectTrigger>
-                <SelectValue />
+              <SelectTrigger id="rate-card" aria-describedby="rate-card-hint">
+                <SelectValue placeholder="Select a rate card" />
               </SelectTrigger>
               <SelectContent>
                 {rateCards.map(card => (
@@ -150,6 +161,9 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                 ))}
               </SelectContent>
             </Select>
+            <p id="rate-card-hint" className="text-xs text-muted-foreground">
+              Select the pricing structure to use for this quote calculation
+            </p>
           </div>
 
           {/* Order Volume */}
@@ -159,8 +173,10 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
               <Input
                 id="monthly-orders"
                 type="number"
+                min="0"
                 value={scopeInput.monthlyOrders}
                 onChange={(e) => updateScopeInput({ monthlyOrders: parseInt(e.target.value) || 0 })}
+                aria-describedby="monthly-orders-hint"
               />
             </div>
             <div className="space-y-2">
@@ -169,10 +185,16 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                 id="units-per-order"
                 type="number"
                 step="0.1"
+                min="0"
                 value={scopeInput.averageUnitsPerOrder}
                 onChange={(e) => updateScopeInput({ averageUnitsPerOrder: parseFloat(e.target.value) || 0 })}
+                aria-describedby="units-per-order-hint"
               />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+            <p id="monthly-orders-hint">Number of orders expected per month</p>
+            <p id="units-per-order-hint">Average number of items per order</p>
           </div>
 
           {/* Order Value */}
@@ -182,19 +204,24 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
               id="order-value"
               type="number"
               step="0.01"
+              min="0"
               value={scopeInput.averageOrderValue}
               onChange={(e) => updateScopeInput({ averageOrderValue: parseFloat(e.target.value) || 0 })}
+              aria-describedby="order-value-hint"
             />
+            <p id="order-value-hint" className="text-xs text-muted-foreground">
+              Total dollar value of typical customer order
+            </p>
           </div>
 
           {/* Shipping Model */}
           <div className="space-y-2">
-            <Label>Shipping Model</Label>
+            <Label htmlFor="shipping-model">Shipping Model</Label>
             <Select
               value={scopeInput.shippingModel}
               onValueChange={(value: 'standard' | 'customerAccount') => updateScopeInput({ shippingModel: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="shipping-model" aria-describedby="shipping-model-hint">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -202,11 +229,28 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                 <SelectItem value="customerAccount">Customer Account</SelectItem>
               </SelectContent>
             </Select>
+            <p id="shipping-model-hint" className="text-xs text-muted-foreground">
+              Choose between standard shipping rates or customer's own shipping account
+            </p>
           </div>
 
           {/* Shipping Size Mix */}
           <div className="space-y-4">
-            <Label>Shipping Size Mix (%)</Label>
+            <div className="flex items-center justify-between">
+              <Label>Shipping Size Mix (%)</Label>
+              <span
+                className={`text-sm font-medium ${Math.abs(shippingMixTotal - 100) < 0.1
+                    ? 'text-green-600'
+                    : shippingMixTotal >= 99.5 && shippingMixTotal <= 100.5
+                      ? 'text-amber-600'
+                      : 'text-red-600'
+                  }`}
+                aria-live="polite"
+                aria-label={`Shipping mix total: ${shippingMixTotal.toFixed(1)} percent`}
+              >
+                Total: {shippingMixTotal.toFixed(1)}%
+              </span>
+            </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="small-mix" className="text-sm">Small</Label>
@@ -214,8 +258,11 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   id="small-mix"
                   type="number"
                   step="0.1"
+                  min="0"
+                  max="100"
                   value={scopeInput.shippingSizeMix.small}
                   onChange={(e) => updateShippingMix('small', parseFloat(e.target.value) || 0)}
+                  aria-describedby="shipping-mix-hint"
                 />
               </div>
               <div className="space-y-2">
@@ -224,8 +271,11 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   id="medium-mix"
                   type="number"
                   step="0.1"
+                  min="0"
+                  max="100"
                   value={scopeInput.shippingSizeMix.medium}
                   onChange={(e) => updateShippingMix('medium', parseFloat(e.target.value) || 0)}
+                  aria-describedby="shipping-mix-hint"
                 />
               </div>
               <div className="space-y-2">
@@ -234,16 +284,33 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   id="large-mix"
                   type="number"
                   step="0.1"
+                  min="0"
+                  max="100"
                   value={scopeInput.shippingSizeMix.large}
                   onChange={(e) => updateShippingMix('large', parseFloat(e.target.value) || 0)}
+                  aria-describedby="shipping-mix-hint"
                 />
               </div>
             </div>
             {normalizationHint && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge
+                id="shipping-mix-hint"
+                variant={
+                  normalizationHint.includes('auto-normalized')
+                    ? 'default'
+                    : normalizationHint.includes('Warning')
+                      ? 'destructive'
+                      : 'secondary'
+                }
+                className="text-xs"
+                aria-live="polite"
+              >
                 {normalizationHint}
               </Badge>
             )}
+            <p className="text-xs text-muted-foreground">
+              Percentages between 99.5% and 100.5% will be auto-normalized to total 100%
+            </p>
           </div>
 
           {/* Actions */}
@@ -264,7 +331,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
       {calculation && selectedRateCard && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">
+            <CardTitle className="text-2xl" aria-live="polite" aria-label="Total monthly cost">
               {formatCurrency(calculation.finalMonthlyCostCents)}
               <span className="text-base font-normal text-muted-foreground ml-2">
                 / month
@@ -279,21 +346,27 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span>Fulfillment</span>
-                <span className="font-medium">{formatCurrency(calculation.fulfillmentCostCents)}</span>
+                <span className="font-medium" aria-live="polite" aria-label="Fulfillment cost">
+                  {formatCurrency(calculation.fulfillmentCostCents)}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span>Shipping & Handling</span>
-                <span className="font-medium">{formatCurrency(calculation.shippingCostCents)}</span>
+                <span className="font-medium" aria-live="polite" aria-label="Shipping and handling cost">
+                  {formatCurrency(calculation.shippingCostCents)}
+                </span>
               </div>
               <hr />
               <div className="flex justify-between items-center">
                 <span>Subtotal</span>
-                <span className="font-medium">{formatCurrency(calculation.totalMonthlyCostCents)}</span>
+                <span className="font-medium" aria-live="polite" aria-label="Subtotal cost">
+                  {formatCurrency(calculation.totalMonthlyCostCents)}
+                </span>
               </div>
               {calculation.finalMonthlyCostCents > calculation.totalMonthlyCostCents && (
                 <div className="flex justify-between items-center text-accent">
                   <span>Monthly Minimum Applied</span>
-                  <span className="font-medium">
+                  <span className="font-medium" aria-live="polite" aria-label="Monthly minimum adjustment">
                     +{formatCurrency(calculation.finalMonthlyCostCents - calculation.totalMonthlyCostCents)}
                   </span>
                 </div>
@@ -306,13 +379,13 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground">Fulfillment</div>
-                  <div className="font-medium">
+                  <div className="font-medium" aria-live="polite" aria-label="Fulfillment cost per order">
                     {formatCurrency(calculation.breakdown.fulfillment.selectedBranchCents)}
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Shipping</div>
-                  <div className="font-medium">
+                  <div className="font-medium" aria-live="polite" aria-label="Shipping cost per order">
                     {formatCurrency(calculation.breakdown.shipping.blendedCostPerOrderCents)}
                   </div>
                 </div>

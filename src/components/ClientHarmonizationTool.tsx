@@ -287,7 +287,7 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
 
         const currentDate = new Date().toLocaleDateString();
         const currentTime = new Date().toLocaleTimeString();
-        
+
         const htmlReport = `
 <!DOCTYPE html>
 <html>
