@@ -12,5 +12,5 @@ import "./index.css"
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
     <App />
-   </ErrorBoundary>
+  </ErrorBoundary>
 )
