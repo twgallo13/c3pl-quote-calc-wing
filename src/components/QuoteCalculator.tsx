@@ -151,7 +151,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-8">
+    <div className="grid md:grid-cols-2 gap-8 p-4 md:p-8">
       {/* Column 1: Inputs */}
       <div className="space-y-6">
         <Card>
@@ -190,7 +190,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="units-per-order">Average Units per Order</Label>  
+                <Label htmlFor="units-per-order">Average Units per Order</Label>
                 <Input
                   id="units-per-order"
                   type="number"
@@ -402,20 +402,41 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
       </div>
       {/* Column 2: Results */}
       <div>
-        {scenarioResult && selectedRateCard && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl" aria-live="polite" aria-label="Total monthly cost">
-                {formatCurrency(scenarioResult.finalMonthlyCostCents)}
-                <span className="text-base font-normal text-muted-foreground ml-2">
-                  / month
-                </span>
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Using {selectedRateCard.name} {selectedRateCard.version}
-              </p>
-            </CardHeader>
+        <Card>
+          <CardHeader>
+            <CardTitle>Quote Estimate</CardTitle>
+            <div className="space-y-2">
+              <Label htmlFor="rate-card-select">Select Rate Card</Label>
+              <Select
+                value={selectedRateCard.id}
+                onValueChange={(value) => {
+                  const rateCard = sampleRateCards.find(rc => rc.id === value);
+                  if (rateCard) handleRateCardChange(rateCard);
+                }}
+              >
+                <SelectTrigger id="rate-card-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sampleRateCards.map((rateCard) => (
+                    <SelectItem key={rateCard.id} value={rateCard.id}>
+                      {rateCard.name} {rateCard.version}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          {scenarioResult && (
             <CardContent className="space-y-4">
+              {/* Final Total Display */}
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-3xl font-bold text-primary" aria-live="polite" aria-label="Total monthly cost">
+                  {formatCurrency(scenarioResult.finalMonthlyCostCents)}
+                </div>
+                <div className="text-sm text-muted-foreground">per month</div>
+              </div>
+              
               {/* Cost Breakdown Table */}
               <Table>
                 <TableBody>
@@ -462,8 +483,8 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                 </div>
               </div>
             </CardContent>
-          </Card>
-        )}
+          )}
+        </Card>
       </div>
     </div>
   );
