@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, ClockCounterClockwise, TestTube, ArrowsLeftRight, Shield } from '@phosphor-icons/react';
 import QuoteCalculator from './components/QuoteCalculator';
 import QuoteHistory from './components/QuoteHistory';
-import { ClientHarmonizationTool } from './components/ClientHarmonizationTool';
+import ClientHarmonizationTool from './components/ClientHarmonizationTool';
 import { RateCardManagement } from './components/RateCardManagement';
 import QuotePage from './pages/quote';
 import type { Quote, RateCard } from './lib/types';
