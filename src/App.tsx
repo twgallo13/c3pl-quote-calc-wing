@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, ClockCounterClockwise, TestTube } from '@phosphor-icons/react';
+import { Calculator, ClockCounterClockwise, TestTube, ArrowsLeftRight } from '@phosphor-icons/react';
 import QuoteCalculator from './components/QuoteCalculator';
 import QuoteHistory from './components/QuoteHistory';
+import { ClientHarmonizationTool } from './components/ClientHarmonizationTool';
 import QuotePage from './pages/quote';
 import type { Quote } from './lib/types';
 import { APP_VERSION } from '@momentum/version';
@@ -31,7 +32,7 @@ function App() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="calculator" className="flex items-center gap-2">
               <Calculator size={18} />
               Quote Calculator
@@ -39,6 +40,10 @@ function App() {
             <TabsTrigger value="history" className="flex items-center gap-2">
               <ClockCounterClockwise size={18} />
               Quote History
+            </TabsTrigger>
+            <TabsTrigger value="harmonization" className="flex items-center gap-2">
+              <ArrowsLeftRight size={18} />
+              Client Harmonization
             </TabsTrigger>
             <TabsTrigger value="quote" className="flex items-center gap-2">
               <TestTube size={18} />
@@ -52,6 +57,10 @@ function App() {
 
           <TabsContent value="history">
             <QuoteHistory />
+          </TabsContent>
+
+          <TabsContent value="harmonization">
+            <ClientHarmonizationTool />
           </TabsContent>
 
           <TabsContent value="quote">
