@@ -24,25 +24,27 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { Calculator, FloppyDisk, Download } from '@phosphor-icons/react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Calculator, FloppyDisk, Download, Warning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { RateCard, ScopeInput, QuoteCalculation, Quote } from '@/lib/types';
 import { calculateQuote, formatCurrency, formatPercentage, normalizeShippingSizeMix } from '@/lib/calculator';
-import { sampleRateCards } from '@/lib/sampleData';
+import { useRateCards } from '@/hooks/useRateCards';
 
 // Alias for ScenarioResult to match requested naming
 type ScenarioResult = QuoteCalculation;
 // Alias for calculateScenario to match requested naming
 const calculateScenario = calculateQuote;
 
-export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading }: {
+export default function QuoteCalculator({ onQuoteCalculated }: {
   onQuoteCalculated?: (quote: Quote) => void;
-  rateCards: RateCard[];
-  loading?: boolean;
 }) {
+  // Use the rate cards hook
+  const { data: rateCards, loading, error } = useRateCards();
+  
   // State hooks as requested
   const [scope, setScope] = useState<ScopeInput>(initialScope);
-  const [selectedRateCard, setSelectedRateCard] = useState<RateCard>(sampleRateCards[0]);
+  const [selectedRateCard, setSelectedRateCard] = useState<RateCard | null>(null);
   const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(null);
 
   // Additional state for UI functionality
@@ -50,6 +52,13 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
   const [shippingMixTotal, setShippingMixTotal] = useState<number>(100);
   const [clientName, setClientName] = useState<string>('');
   const [quotes, setQuotes] = useState<Quote[]>([]);
+
+  // Initialize selected rate card when data loads
+  useEffect(() => {
+    if (rateCards && rateCards.length > 0 && !selectedRateCard) {
+      setSelectedRateCard(rateCards[0]);
+    }
+  }, [rateCards, selectedRateCard]);
 
   // Calculation effect - recalculate whenever scope or selectedRateCard changes
   useEffect(() => {
@@ -146,8 +155,44 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
     toast.success('Quote exported');
   };
 
-  if (loading || !rateCards) {
-    return <div>Loading...</div>;
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <div className="h-12 w-12 mx-auto animate-spin rounded-full border-4 border-muted border-t-primary"></div>
+          <p className="text-muted-foreground">Loading rate cards...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Alert className="max-w-md">
+          <Warning className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load rate cards. Please refresh the page to try again.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Handle empty state
+  if (!rateCards || rateCards.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Alert className="max-w-md">
+          <Warning className="h-4 w-4" />
+          <AlertDescription>
+            No rate cards available. Please contact your administrator.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (
@@ -253,9 +298,9 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
             <div className="space-y-2">
               <Label htmlFor="rate-card-select">Choose a pricing plan</Label>
               <Select
-                value={selectedRateCard.id}
+                value={selectedRateCard?.id || ''}
                 onValueChange={(value) => {
-                  const rateCard = sampleRateCards.find(rc => rc.id === value);
+                  const rateCard = rateCards?.find(rc => rc.id === value);
                   if (rateCard) handleRateCardChange(rateCard);
                 }}
               >
@@ -263,7 +308,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {sampleRateCards.map((rateCard) => (
+                  {(rateCards || []).map((rateCard) => (
                     <SelectItem key={rateCard.id} value={rateCard.id}>
                       {rateCard.name} {rateCard.version}
                     </SelectItem>
