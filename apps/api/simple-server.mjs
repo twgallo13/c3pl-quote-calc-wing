@@ -8,6 +8,21 @@ const { PrismaClient } = pkg;
 const app = express();
 const prisma = new PrismaClient();
 
+// CORS middleware for Codespaces
+app.use((req, res, next) => {
+    const frontendUrl = 'https://laughing-funicular-jjw559vq6r95hq5v6-5002.app.github.dev';
+    res.header('Access-Control-Allow-Origin', frontendUrl);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
 app.use(express.json());
 
 // Health endpoint
@@ -25,6 +40,55 @@ app.get('/api/ratecards', async (req, res) => {
     } catch (error) {
         console.error('Error fetching rate cards:', error);
         res.status(500).json({ error: 'Failed to fetch rate cards' });
+    }
+});
+
+// Get single rate card by ID
+app.get('/api/ratecards/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const rateCard = await prisma.rateCard.findUnique({
+            where: { id }
+        });
+        if (!rateCard) {
+            return res.status(404).json({ error: 'Rate card not found' });
+        }
+        res.json(rateCard);
+    } catch (error) {
+        console.error('Error fetching rate card:', error);
+        res.status(500).json({ error: 'Failed to fetch rate card' });
+    }
+});
+
+// Create new rate card
+app.post('/api/ratecards', async (req, res) => {
+    try {
+        const rateCardData = req.body;
+        if (!rateCardData.id || !rateCardData.name) {
+            return res.status(400).json({ error: 'ID and name are required' });
+        }
+
+        const existingCard = await prisma.rateCard.findUnique({
+            where: { id: rateCardData.id }
+        });
+        if (existingCard) {
+            return res.status(409).json({ error: 'Rate card with this ID already exists' });
+        }
+
+        const rateCard = await prisma.rateCard.create({
+            data: {
+                id: rateCardData.id,
+                name: rateCardData.name,
+                version: rateCardData.version || 'v1.0.0',
+                version_notes: rateCardData.version_notes || 'Initial version',
+                monthly_minimum_cents: rateCardData.monthly_minimum_cents || 0,
+                prices: rateCardData.prices
+            }
+        });
+        res.status(201).json(rateCard);
+    } catch (error) {
+        console.error('Error creating rate card:', error);
+        res.status(500).json({ error: 'Failed to create rate card' });
     }
 });
 

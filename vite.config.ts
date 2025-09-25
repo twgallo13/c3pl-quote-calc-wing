@@ -25,8 +25,14 @@ export default defineConfig({
     dedupe: ['react', 'react-dom']
   },
   server: {
+    port: 5000,
+    host: '0.0.0.0',
     proxy: {
-      '/api': 'http://localhost:3003'
-    }
+      '/api': {
+        target: 'http://localhost:3003',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });

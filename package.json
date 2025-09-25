@@ -4,7 +4,7 @@
     "version": "3.1.0",
     "type": "module",
     "scripts": {
-        "dev": "vite",
+        "dev": "pnpm --filter \"./apps/*\" --parallel dev",
         "dev:api": "node server.js",
         "kill": "fuser -k 5000/tcp",
         "build": "pnpm build:packages && tsc -b --noCheck && vite build",

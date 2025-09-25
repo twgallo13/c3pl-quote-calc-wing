@@ -1,6 +1,9 @@
 import { APP_VERSION } from '@momentum/version';
 import { RateCard } from './types';
 
+// API base URL - use environment variable in Codespaces, fallback to relative paths
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
 export interface QuoteBreakdown {
   perOrder: { fulfillmentCents: number; shippingHandlingCents: number };
   monthly: { fulfillmentCents: number; shippingHandlingCents: number };
@@ -8,7 +11,7 @@ export interface QuoteBreakdown {
 }
 
 export async function fetchQuotePreview(scope: any, rateCardId: string) {
-  const res = await fetch('/api/quotes/preview', {
+  const res = await fetch(`${API_BASE_URL}/api/quotes/preview`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ scope, rateCardId })
@@ -20,7 +23,7 @@ export async function fetchQuotePreview(scope: any, rateCardId: string) {
 // Rate Card Management API functions
 export async function fetchRateCards() {
   try {
-    const res = await fetch('/api/ratecards');
+    const res = await fetch(`${API_BASE_URL}/api/ratecards`);
     if (!res.ok) throw new Error(`API error ${res.status}`);
     const data = await res.json();
     return { rateCards: data, appVersion: APP_VERSION };
@@ -32,7 +35,7 @@ export async function fetchRateCards() {
 
 export async function fetchRateCard(id: string) {
   try {
-    const res = await fetch(`/api/ratecards/${id}`);
+    const res = await fetch(`${API_BASE_URL}/api/ratecards/${id}`);
     if (!res.ok) throw new Error(`API error ${res.status}`);
     const rateCard = await res.json();
     return { rateCard, appVersion: APP_VERSION };
@@ -44,7 +47,7 @@ export async function fetchRateCard(id: string) {
 
 export async function createRateCard(rateCard: RateCard & { versionNotes?: string }) {
   try {
-    const res = await fetch('/api/ratecards', {
+    const res = await fetch(`${API_BASE_URL}/api/ratecards`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(rateCard)
@@ -63,7 +66,7 @@ export async function createRateCard(rateCard: RateCard & { versionNotes?: strin
 
 export async function updateRateCard(id: string, updates: Partial<RateCard> & { versionNotes?: string }) {
   try {
-    const res = await fetch(`/api/ratecards/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/api/ratecards/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
@@ -82,7 +85,7 @@ export async function updateRateCard(id: string, updates: Partial<RateCard> & { 
 
 export async function deleteRateCard(id: string) {
   try {
-    const res = await fetch(`/api/ratecards/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/api/ratecards/${id}`, {
       method: 'DELETE'
     });
     if (!res.ok) {
