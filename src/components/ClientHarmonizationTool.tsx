@@ -5,57 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Alert, AlertDescription, AlertTriangle, Check, Download, ArrowLeftRight, Settings } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, Check, Download, ArrowLeftRight, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { fetchQuotePreview } from '@/lib/api';
+import { fetchQuotePreview, QuoteBreakdown as ApiQuoteBreakdown } from '@/lib/api';
+import { QuoteCalculation, ScopeInput, RateCard } from '@/lib/types';
 import { APP_VERSION } from '@momentum/version';
-
-interface RateCard {
-    id: string;
-    name: string;
-    version: string;
-    monthly_minimum_cents: number;
-    prices: {
-        fulfillment: {
-            aovPercentage: number;
-            baseFeeCents: number;
-            perAdditionalUnitCents: number;
-        };
-        storage: {
-            smallUnitCents: number;
-            mediumUnitCents: number;
-            largeUnitCents: number;
-            palletCents: number;
-        };
-        shippingAndHandling: {
-            standard: {
-                smallPackageCents: number;
-                mediumPackageCents: number;
-                largePackageCents: number;
-            };
-            customerAccount: {
-                smallPackageCents: number;
-                mediumPackageCents: number;
-                largePackageCents: number;
-            };
-        };
-    };
-}
-
-interface ScopeInput {
-    monthlyOrders: number;
-    averageUnitsPerOrder: number;
-    averageOrderValue: number;
-    shippingModel: 'standard' | 'customerAccount';
-    shippingSizeMix: {
-        small: number;
-        medium: number;
-        large: number;
-    };
-}
 
 interface DiscountSettings {
     global: number;
@@ -70,6 +28,13 @@ interface QuoteBreakdown {
     shippingAndHandlingCostCents: number;
     totalMonthlyCostCents: number;
     effectiveMinimumCents: number;
+}
+
+interface DiscountWarning {
+    type: 'high-discount';
+    category: string;
+    discount: number;
+    threshold: number;
 }
 
 const SAMPLE_RATE_CARDS: RateCard[] = [
@@ -166,7 +131,17 @@ export function ClientHarmonizationTool() {
         try {
             setLoading(true);
             const result = await fetchQuotePreview(scope, rateCardId);
-            setQuote(result.breakdown);
+
+            // Convert API response to our expected format
+            const adaptedQuote: QuoteBreakdown = {
+                fulfillmentCostCents: result.breakdown.monthly.fulfillmentCents,
+                storageCostCents: 0, // Storage costs are not included in the current API
+                shippingAndHandlingCostCents: result.breakdown.monthly.shippingHandlingCents,
+                totalMonthlyCostCents: result.breakdown.monthly.fulfillmentCents + result.breakdown.monthly.shippingHandlingCents,
+                effectiveMinimumCents: 0 // This would need to be calculated based on rate card minimum
+            };
+
+            setQuote(adaptedQuote);
         } catch (error) {
             console.error('Failed to calculate quote:', error);
         } finally {
@@ -195,7 +170,7 @@ export function ClientHarmonizationTool() {
     const warnings = useMemo(() => {
         if (!discountAnalysis) return [];
 
-        const warningsList = [];
+        const warningsList: DiscountWarning[] = [];
 
         if (Math.abs(discountAnalysis.total) > discountSettings.global) {
             warningsList.push({
