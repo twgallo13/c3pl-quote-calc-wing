@@ -1,4 +1,4 @@
-import type { RateCard, ScopeInput, QuoteCalculation } from './types';
+import type { RateCard, ScopeInput, QuoteCalculation, LineItem } from './types';
 
 // Round half-up to nearest cent (MOM-3 resolution)
 function roundHalfUp(cents: number): number {
@@ -8,7 +8,7 @@ function roundHalfUp(cents: number): number {
 // Normalize shipping size mix percentages (MOM-4 resolution)
 export function normalizeShippingSizeMix(mix: { small: number; medium: number; large: number }) {
   const total = mix.small + mix.medium + mix.large;
-  
+
   // Auto-normalize if between 99.5% and 100.5%
   if (total >= 99.5 && total <= 100.5) {
     return {
@@ -18,7 +18,7 @@ export function normalizeShippingSizeMix(mix: { small: number; medium: number; l
       wasNormalized: total !== 100
     };
   }
-  
+
   return {
     small: mix.small,
     medium: mix.medium,
@@ -35,13 +35,13 @@ function calculateFulfillmentCost(
 ): { aovBranchCents: number; baseBranchCents: number; selectedBranchCents: number } {
   // AOV branch: percentage of order value
   const aovBranchCents = roundHalfUp(aovDollars * 100 * pricing.aovPercentage);
-  
+
   // Base branch: base fee + additional unit fees
   const baseBranchCents = pricing.baseFeeCents + (pricing.perAdditionalUnitCents * (utp - 1));
-  
+
   // Select maximum of both branches
   const selectedBranchCents = Math.max(aovBranchCents, baseBranchCents);
-  
+
   return {
     aovBranchCents,
     baseBranchCents,
@@ -57,54 +57,88 @@ function calculateShippingCost(
 ): { blendedCostPerOrderCents: number } {
   // Select rate set based on shipping model
   const rates = pricing[shippingModel];
-  
+
   // Calculate weighted average, rounding each term before summing
   const smallWeightedCents = roundHalfUp((sizeMix.small / 100) * rates.smallPackageCents);
   const mediumWeightedCents = roundHalfUp((sizeMix.medium / 100) * rates.mediumPackageCents);
   const largeWeightedCents = roundHalfUp((sizeMix.large / 100) * rates.largePackageCents);
-  
+
   const blendedCostPerOrderCents = smallWeightedCents + mediumWeightedCents + largeWeightedCents;
-  
+
   return { blendedCostPerOrderCents };
+}
+
+// Calculate storage cost per month
+function calculateStorageCost(
+  storageRequirements: ScopeInput['storageRequirements'],
+  pricing: RateCard['prices']['storage']
+): { monthlyCostCents: number } {
+  const smallCost = storageRequirements.smallUnits * pricing.smallUnitCents;
+  const mediumCost = storageRequirements.mediumUnits * pricing.mediumUnitCents;
+  const largeCost = storageRequirements.largeUnits * pricing.largeUnitCents;
+  const palletCost = storageRequirements.pallets * pricing.palletCents;
+
+  const monthlyCostCents = roundHalfUp(smallCost + mediumCost + largeCost + palletCost);
+
+  return { monthlyCostCents };
 }
 
 // Main calculation function
 export function calculateQuote(rateCard: RateCard, input: ScopeInput): QuoteCalculation {
   // Normalize shipping size mix
   const normalizedMix = normalizeShippingSizeMix(input.shippingSizeMix);
-  
+
   // Calculate fulfillment cost per order
   const fulfillment = calculateFulfillmentCost(
     input.averageUnitsPerOrder,
     input.averageOrderValue,
     rateCard.prices.fulfillment
   );
-  
+
   // Calculate S&H cost per order
   const shipping = calculateShippingCost(
     input.shippingModel,
     normalizedMix,
     rateCard.prices.shippingAndHandling
   );
-  
+
+  // Calculate storage cost per month
+  const storage = calculateStorageCost(
+    input.storageRequirements,
+    rateCard.prices.storage
+  );
+
   // Calculate monthly totals
   const fulfillmentCostCents = fulfillment.selectedBranchCents * input.monthlyOrders;
   const shippingCostCents = shipping.blendedCostPerOrderCents * input.monthlyOrders;
-  const totalMonthlyCostCents = fulfillmentCostCents + shippingCostCents;
-  
+  const storageCostCents = storage.monthlyCostCents;
+  const totalMonthlyCostCents = fulfillmentCostCents + shippingCostCents + storageCostCents;
+
   // Apply monthly minimum
   const finalMonthlyCostCents = Math.max(totalMonthlyCostCents, rateCard.monthly_minimum_cents);
-  
+
+  // Create line items for display
+  const lineItems: LineItem[] = [
+    { name: 'Fulfillment', costCents: fulfillmentCostCents },
+    { name: 'Shipping & Handling', costCents: shippingCostCents },
+    { name: 'Storage', costCents: storageCostCents }
+  ];
+
   return {
     fulfillmentCostCents,
     shippingCostCents,
+    storageCostCents,
     totalMonthlyCostCents,
     finalMonthlyCostCents,
+    lineItems,
     breakdown: {
       fulfillment,
       shipping: {
         blendedCostPerOrderCents: shipping.blendedCostPerOrderCents,
         totalShippingCents: shippingCostCents
+      },
+      storage: {
+        monthlyCostCents: storageCostCents
       },
       monthlyMinimumCents: rateCard.monthly_minimum_cents
     }
