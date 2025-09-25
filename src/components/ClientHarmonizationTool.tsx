@@ -6,10 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Save } from 'lucide-react';
 import { ScopeInput, RateCard, QuoteCalculation } from '@/lib/types';
 import { calculateQuote } from '@/lib/calculator';
 import { sampleRateCards } from '@/lib/sampleData';
+import { createRateCard } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface ClientHarmonizationToolProps {
     rateCards: RateCard[];
@@ -47,6 +49,8 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
     const [requiredLoyaltyDiscount, setRequiredLoyaltyDiscount] = useState<number>(0);
     const [analysisCompleted, setAnalysisCompleted] = useState<boolean>(false);
     const [scenarioResult, setScenarioResult] = useState<QuoteCalculation | null>(null);
+    const [harmonizedRateCard, setHarmonizedRateCard] = useState<RateCard | null>(null);
+    const [saving, setSaving] = useState<boolean>(false);
 
     // Handler Functions for scope changes
     const handleScopeChange = (category: keyof ScopeInput, field: string, value: number | string) => {
@@ -95,11 +99,26 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
         const requiredDiscountPercent = newPrice > 0 ?
             parseFloat(((delta / newPrice) * 100).toFixed(2)) : 0;
 
+        // Create harmonized rate card
+        const harmonized: RateCard = {
+            ...selectedRateCard,
+            id: `harmonized-${Date.now()}`,
+            name: `Harmonized ${selectedRateCard.name}`,
+            version: 'v1.0.0',
+            version_notes: `Harmonized rate card for target price: ${formatCurrency(targetMonthlyPrice)}`,
+            // Apply discount adjustments to monthly minimum if needed
+            monthly_minimum_cents: Math.max(
+                selectedRateCard.monthly_minimum_cents,
+                Math.round(targetMonthlyPrice * 100)
+            )
+        };
+
         // Update component state to display results
         setNewCalculatedPrice(newPrice);
         setDifference(delta);
         setRequiredLoyaltyDiscount(requiredDiscountPercent);
         setScenarioResult(result);
+        setHarmonizedRateCard(harmonized);
         setAnalysisCompleted(true);
     };
 
@@ -109,6 +128,48 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
             style: 'currency',
             currency: 'USD'
         }).format(amount);
+    };
+
+    // Handle saving harmonized rate card with flattened payload
+    const handleSave = async () => {
+        if (!harmonizedRateCard) {
+            toast.error('No harmonized rate card to save');
+            return;
+        }
+
+        try {
+            setSaving(true);
+
+            // Create flattened payload object by spreading the top-level properties
+            // and flattening the nested prices structure
+            const payload = {
+                // Top-level properties from harmonizedRateCard
+                name: harmonizedRateCard.name,
+                version: harmonizedRateCard.version,
+                version_notes: harmonizedRateCard.version_notes,
+                monthly_minimum_cents: harmonizedRateCard.monthly_minimum_cents,
+
+                // Flatten fulfillment prices
+                ...harmonizedRateCard.prices.fulfillment,
+
+                // Flatten storage prices  
+                ...harmonizedRateCard.prices.storage,
+
+                // Flatten shipping and handling prices
+                ...harmonizedRateCard.prices.shippingAndHandling.standard,
+                ...harmonizedRateCard.prices.shippingAndHandling.customerAccount
+            };
+
+            // Send flattened payload to API
+            await createRateCard(payload as any);
+
+            toast.success('Harmonized rate card saved successfully!');
+        } catch (error) {
+            console.error('Failed to save harmonized rate card:', error);
+            toast.error('Failed to save harmonized rate card: ' + (error as Error).message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     // Show loading state while rate cards are being fetched
@@ -436,6 +497,18 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
                                                 {requiredLoyaltyDiscount.toFixed(2)}%
                                             </span>
                                         </div>
+                                    </div>
+
+                                    {/* Save Harmonized Rate Card Button */}
+                                    <div className="pt-4 border-t">
+                                        <Button
+                                            onClick={handleSave}
+                                            disabled={saving || !harmonizedRateCard}
+                                            className="w-full"
+                                        >
+                                            <Save className="w-4 h-4 mr-2" />
+                                            {saving ? 'Saving...' : 'Save Harmonized Rate Card'}
+                                        </Button>
                                     </div>
                                 </CardContent>
                             </Card>
