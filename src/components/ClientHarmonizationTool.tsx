@@ -140,28 +140,18 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
         try {
             setSaving(true);
 
-            // Create flattened payload object by spreading the top-level properties
-            // and flattening the nested prices structure
+            // Create payload with proper nested prices structure that matches API expectations
             const payload = {
-                // Top-level properties from harmonizedRateCard
+                id: harmonizedRateCard.id,
                 name: harmonizedRateCard.name,
                 version: harmonizedRateCard.version,
                 version_notes: harmonizedRateCard.version_notes,
                 monthly_minimum_cents: harmonizedRateCard.monthly_minimum_cents,
-
-                // Flatten fulfillment prices
-                ...harmonizedRateCard.prices.fulfillment,
-
-                // Flatten storage prices  
-                ...harmonizedRateCard.prices.storage,
-
-                // Flatten shipping and handling prices
-                ...harmonizedRateCard.prices.shippingAndHandling.standard,
-                ...harmonizedRateCard.prices.shippingAndHandling.customerAccount
+                prices: harmonizedRateCard.prices // Keep nested structure
             };
 
-            // Send flattened payload to API
-            await createRateCard(payload as any);
+            // Send properly structured payload to API
+            await createRateCard(payload);
 
             toast.success('Harmonized rate card saved successfully!');
         } catch (error) {
