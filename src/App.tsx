@@ -10,7 +10,7 @@ import QuotePage from './pages/quote';
 import type { Quote, RateCard } from './lib/types';
 import { fetchRateCards } from './lib/api';
 import { toast } from 'sonner';
-import { APP_VERSION } from '@momentum/version';
+import { APP_VERSION } from './version';
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>('calculator');

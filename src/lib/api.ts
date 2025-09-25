@@ -1,4 +1,4 @@
-import { APP_VERSION } from '@momentum/version';
+import { APP_VERSION } from '../version';
 import { RateCard } from './types';
 
 // API base URL - use environment variable in Codespaces, fallback to relative paths

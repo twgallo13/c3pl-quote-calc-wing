@@ -24,12 +24,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@momentum/version": [
-        "./packages/version/src"
-      ],
-      "@momentum/calc": [
-        "./packages/calc/src"
       ]
     },
   },
@@ -37,12 +31,6 @@
     "src"
   ],
   "references": [
-    {
-      "path": "./packages/version"
-    },
-    {
-      "path": "./packages/calc"
-    },
     {
       "path": "./apps/api"
     }

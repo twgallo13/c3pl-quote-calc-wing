@@ -13,8 +13,6 @@
         "db:seed": "tsx prisma/seed.ts"
     },
     "dependencies": {
-        "@momentum/calc": "workspace:*",
-        "@momentum/version": "workspace:*",
         "@prisma/client": "^6.16.2",
         "dotenv": "^17.2.2",
         "express": "^4.19.2",

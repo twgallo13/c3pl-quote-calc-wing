@@ -17,12 +17,5 @@
     "include": [
         "src"
     ],
-    "references": [
-        {
-            "path": "../../packages/version"
-        },
-        {
-            "path": "../../packages/calc"
-        }
-    ]
+    "references": []
 }

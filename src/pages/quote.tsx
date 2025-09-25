@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fetchQuotePreview, QuoteBreakdown } from '../lib/api';
-import { APP_VERSION } from '@momentum/version';
+import { APP_VERSION } from '../version';
 
 export default function QuotePage() {
   const [result, setResult] = useState<null | any>(null);
