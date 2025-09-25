@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { fetchQuotePreview, QuoteBreakdown as ApiQuoteBreakdown } from '@/lib/api';
 import { QuoteCalculation, ScopeInput, RateCard } from '@/lib/types';
+import { calculateQuote } from '@/lib/calculator';
 import { APP_VERSION } from '@momentum/version';
 
 interface ClientHarmonizationToolProps {
@@ -49,7 +49,8 @@ const DEFAULT_SCOPE: ScopeInput = {
     averageUnitsPerOrder: 2.5,
     averageOrderValue: 45.00,
     shippingModel: 'standard',
-    shippingSizeMix: { small: 60, medium: 30, large: 10 }
+    shippingSizeMix: { small: 60, medium: 30, large: 10 },
+    storageRequirements: { smallUnits: 100, mediumUnits: 50, largeUnits: 25, pallets: 2 }
 };
 
 const DEFAULT_DISCOUNT_SETTINGS: DiscountSettings = {
@@ -72,6 +73,11 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
     const [actionLoading, setActionLoading] = useState(false);
     const [clientName, setClientName] = useState('');
     const [notes, setNotes] = useState('');
+    
+    // Additional state variables as specified in the prompt
+    const [newPrice, setNewPrice] = useState<number>(0);
+    const [delta, setDelta] = useState<number>(0);
+    const [requiredDiscount, setRequiredDiscount] = useState<number>(0);
 
     const sourceCard = rateCards.find(card => card.id === sourceRateCard);
     const targetCard = rateCards.find(card => card.id === targetRateCard);
@@ -79,28 +85,31 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
     // Calculate quotes when rate cards or scope changes
     useEffect(() => {
         if (sourceRateCard && scope) {
-            calculateQuote(sourceRateCard, setSourceQuote);
+            calculateQuoteLocal(sourceRateCard, setSourceQuote);
         }
-    }, [sourceRateCard, scope]);
+    }, [sourceRateCard, scope, rateCards]);
 
     useEffect(() => {
         if (targetRateCard && scope) {
-            calculateQuote(targetRateCard, setTargetQuote);
+            calculateQuoteLocal(targetRateCard, setTargetQuote);
         }
-    }, [targetRateCard, scope]);
+    }, [targetRateCard, scope, rateCards]);
 
-    const calculateQuote = async (rateCardId: string, setQuote: (quote: QuoteBreakdown) => void) => {
+    const calculateQuoteLocal = (rateCardId: string, setQuote: (quote: QuoteBreakdown) => void) => {
         try {
             setActionLoading(true);
-            const result = await fetchQuotePreview(scope, rateCardId);
+            const rateCard = rateCards.find(card => card.id === rateCardId);
+            if (!rateCard) return;
 
-            // Convert API response to our expected format
+            const result = calculateQuote(rateCard, scope);
+
+            // Convert calculator response to our expected format
             const adaptedQuote: QuoteBreakdown = {
-                fulfillmentCostCents: result.breakdown.monthly.fulfillmentCents,
-                storageCostCents: 0, // Storage costs are not included in the current API
-                shippingAndHandlingCostCents: result.breakdown.monthly.shippingHandlingCents,
-                totalMonthlyCostCents: result.breakdown.monthly.fulfillmentCents + result.breakdown.monthly.shippingHandlingCents,
-                effectiveMinimumCents: 0 // This would need to be calculated based on rate card minimum
+                fulfillmentCostCents: result.fulfillmentCostCents,
+                storageCostCents: result.storageCostCents,
+                shippingAndHandlingCostCents: result.shippingCostCents,
+                totalMonthlyCostCents: result.totalMonthlyCostCents,
+                effectiveMinimumCents: result.finalMonthlyCostCents
             };
 
             setQuote(adaptedQuote);
@@ -109,6 +118,48 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
         } finally {
             setActionLoading(false);
         }
+    };
+
+    // Core harmonization logic as specified in the prompt
+    const handleHarmonization = () => {
+        const targetPrice = targetQuote?.totalMonthlyCostCents || 0;
+        const clientScope = scope;
+        const baselineRateCard = rateCards.find(card => card.id === sourceRateCard);
+        
+        if (!baselineRateCard || !targetPrice || !clientScope) return;
+
+        // Convert target price to cents (already in cents)
+        const targetPriceCents = targetPrice;
+
+        // Call the calculateQuote function using the scope and baseline card
+        const result = calculateQuote(baselineRateCard, clientScope);
+
+        // From the result, get the newPriceCents
+        const newPriceCents = result.totalMonthlyCostCents;
+
+        // Calculate the difference
+        const deltaCents = newPriceCents - targetPriceCents;
+
+        // Calculate the required discount percentage (handle division by zero)
+        const requiredDiscountPercent = newPriceCents > 0 ? 
+            parseFloat(((deltaCents / newPriceCents) * 100).toFixed(2)) : 0;
+
+        // Update the component's state with all the new values
+        setNewPrice(newPriceCents / 100); // Convert to dollars for display
+        setDelta(deltaCents / 100); // Convert to dollars for display
+        setRequiredDiscount(requiredDiscountPercent);
+
+        // Create a new harmonizedRateCard object by deep-copying the baselineRateCard
+        const harmonized: RateCard = {
+            ...baselineRateCard,
+            id: `rc-harmonized-${Date.now()}`,
+            name: `${clientName || 'Custom'} Harmonized Plan`,
+            version: 'v1.0.0',
+            // Add a "Loyalty Transition Discount" by adjusting the monthly minimum
+            monthly_minimum_cents: Math.max(0, baselineRateCard.monthly_minimum_cents + deltaCents)
+        };
+
+        setHarmonizedRateCard(harmonized);
     };
 
     // Calculate discount percentages
@@ -898,12 +949,45 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
                                 </div>
                             </div>
 
-                            <div className="flex justify-center">
-                                <Button onClick={generateHarmonizedRateCard} disabled={!sourceRateCard || !targetRateCard}>
+                            <div className="flex justify-center gap-4">
+                                <Button onClick={handleHarmonization} disabled={!sourceRateCard || !targetRateCard}>
                                     <ArrowLeftRight className="h-4 w-4 mr-2" />
-                                    Generate Harmonized Rate Card
+                                    Calculate Harmonization
+                                </Button>
+                                <Button onClick={generateHarmonizedRateCard} disabled={!sourceRateCard || !targetRateCard} variant="outline">
+                                    Generate Rate Card
                                 </Button>
                             </div>
+
+                            {/* Harmonization Results */}
+                            {(newPrice > 0 || delta !== 0 || requiredDiscount !== 0) && (
+                                <Card className="mt-6">
+                                    <CardHeader>
+                                        <CardTitle>Harmonization Analysis</CardTitle>
+                                        <CardDescription>Calculated harmonization metrics</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="text-center">
+                                                <Label className="text-sm text-muted-foreground">New Price</Label>
+                                                <div className="text-2xl font-bold">{formatCurrency(newPrice * 100)}</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <Label className="text-sm text-muted-foreground">Delta</Label>
+                                                <div className={`text-2xl font-bold ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {delta >= 0 ? '+' : ''}{formatCurrency(delta * 100)}
+                                                </div>
+                                            </div>
+                                            <div className="text-center">
+                                                <Label className="text-sm text-muted-foreground">Required Discount</Label>
+                                                <div className={`text-2xl font-bold ${requiredDiscount >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                    {requiredDiscount.toFixed(2)}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

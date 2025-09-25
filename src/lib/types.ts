@@ -53,14 +53,28 @@ export interface ScopeInput {
     medium: number;
     large: number;
   }; // percentages
+  storageRequirements: {
+    smallUnits: number;
+    mediumUnits: number;
+    largeUnits: number;
+    pallets: number;
+  }; // monthly storage needs
+}
+
+// Line item for quote display
+export interface LineItem {
+  name: string;
+  costCents: number;
 }
 
 // Quote calculation results
 export interface QuoteCalculation {
   fulfillmentCostCents: number;
   shippingCostCents: number;
+  storageCostCents: number;
   totalMonthlyCostCents: number;
   finalMonthlyCostCents: number; // After applying minimum
+  lineItems: LineItem[];
   breakdown: {
     fulfillment: {
       aovBranchCents: number;
@@ -70,6 +84,9 @@ export interface QuoteCalculation {
     shipping: {
       blendedCostPerOrderCents: number;
       totalShippingCents: number;
+    };
+    storage: {
+      monthlyCostCents: number;
     };
     monthlyMinimumCents: number;
   };

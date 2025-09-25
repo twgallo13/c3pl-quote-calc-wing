@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Calculator, FloppyDisk, Download } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { RateCard, ScopeInput, QuoteCalculation, Quote } from '@/lib/types';
@@ -31,7 +32,8 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
     averageUnitsPerOrder: 2,
     averageOrderValue: 75,
     shippingModel: 'standard',
-    shippingSizeMix: { small: 60, medium: 30, large: 10 }
+    shippingSizeMix: { small: 60, medium: 30, large: 10 },
+    storageRequirements: { smallUnits: 100, mediumUnits: 50, largeUnits: 25, pallets: 2 }
   });
 
   const [calculation, setCalculation] = useState<QuoteCalculation | null>(null);
@@ -240,10 +242,10 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
               <Label>Shipping Size Mix (%)</Label>
               <span
                 className={`text-sm font-medium ${Math.abs(shippingMixTotal - 100) < 0.1
-                    ? 'text-green-600'
-                    : shippingMixTotal >= 99.5 && shippingMixTotal <= 100.5
-                      ? 'text-amber-600'
-                      : 'text-red-600'
+                  ? 'text-green-600'
+                  : shippingMixTotal >= 99.5 && shippingMixTotal <= 100.5
+                    ? 'text-amber-600'
+                    : 'text-red-600'
                   }`}
                 aria-live="polite"
                 aria-label={`Shipping mix total: ${shippingMixTotal.toFixed(1)} percent`}
@@ -313,6 +315,83 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
             </p>
           </div>
 
+          {/* Storage Requirements */}
+          <div className="space-y-4">
+            <Label>Monthly Storage Requirements</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="small-units" className="text-sm">Small Units</Label>
+                <Input
+                  id="small-units"
+                  type="number"
+                  min="0"
+                  value={scopeInput.storageRequirements.smallUnits}
+                  onChange={(e) => updateScopeInput({
+                    storageRequirements: {
+                      ...scopeInput.storageRequirements,
+                      smallUnits: parseInt(e.target.value) || 0
+                    }
+                  })}
+                  aria-describedby="small-units-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="medium-units" className="text-sm">Medium Units</Label>
+                <Input
+                  id="medium-units"
+                  type="number"
+                  min="0"
+                  value={scopeInput.storageRequirements.mediumUnits}
+                  onChange={(e) => updateScopeInput({
+                    storageRequirements: {
+                      ...scopeInput.storageRequirements,
+                      mediumUnits: parseInt(e.target.value) || 0
+                    }
+                  })}
+                  aria-describedby="medium-units-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="large-units" className="text-sm">Large Units</Label>
+                <Input
+                  id="large-units"
+                  type="number"
+                  min="0"
+                  value={scopeInput.storageRequirements.largeUnits}
+                  onChange={(e) => updateScopeInput({
+                    storageRequirements: {
+                      ...scopeInput.storageRequirements,
+                      largeUnits: parseInt(e.target.value) || 0
+                    }
+                  })}
+                  aria-describedby="large-units-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pallets" className="text-sm">Pallets</Label>
+                <Input
+                  id="pallets"
+                  type="number"
+                  min="0"
+                  value={scopeInput.storageRequirements.pallets}
+                  onChange={(e) => updateScopeInput({
+                    storageRequirements: {
+                      ...scopeInput.storageRequirements,
+                      pallets: parseInt(e.target.value) || 0
+                    }
+                  })}
+                  aria-describedby="pallets-hint"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+              <p id="small-units-hint">Number of small units stored monthly</p>
+              <p id="medium-units-hint">Number of medium units stored monthly</p>
+              <p id="large-units-hint">Number of large units stored monthly</p>
+              <p id="pallets-hint">Number of pallets stored monthly</p>
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="flex gap-2">
             <Button onClick={saveQuote} disabled={!calculation} className="flex-1">
@@ -342,36 +421,33 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Cost Breakdown */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span>Fulfillment</span>
-                <span className="font-medium" aria-live="polite" aria-label="Fulfillment cost">
-                  {formatCurrency(calculation.fulfillmentCostCents)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Shipping & Handling</span>
-                <span className="font-medium" aria-live="polite" aria-label="Shipping and handling cost">
-                  {formatCurrency(calculation.shippingCostCents)}
-                </span>
-              </div>
-              <hr />
-              <div className="flex justify-between items-center">
-                <span>Subtotal</span>
-                <span className="font-medium" aria-live="polite" aria-label="Subtotal cost">
-                  {formatCurrency(calculation.totalMonthlyCostCents)}
-                </span>
-              </div>
-              {calculation.finalMonthlyCostCents > calculation.totalMonthlyCostCents && (
-                <div className="flex justify-between items-center text-accent">
-                  <span>Monthly Minimum Applied</span>
-                  <span className="font-medium" aria-live="polite" aria-label="Monthly minimum adjustment">
-                    +{formatCurrency(calculation.finalMonthlyCostCents - calculation.totalMonthlyCostCents)}
-                  </span>
-                </div>
-              )}
-            </div>
+            {/* Cost Breakdown Table */}
+            <Table>
+              <TableBody>
+                {calculation.lineItems.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{item.name}</TableCell>
+                    <TableCell className="text-right font-medium" aria-live="polite">
+                      {formatCurrency(item.costCents)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="border-t-2">
+                  <TableCell className="font-medium">Subtotal</TableCell>
+                  <TableCell className="text-right font-medium" aria-live="polite" aria-label="Subtotal cost">
+                    {formatCurrency(calculation.totalMonthlyCostCents)}
+                  </TableCell>
+                </TableRow>
+                {calculation.finalMonthlyCostCents > calculation.totalMonthlyCostCents && (
+                  <TableRow className="text-accent">
+                    <TableCell>Monthly Minimum Applied</TableCell>
+                    <TableCell className="text-right font-medium" aria-live="polite" aria-label="Monthly minimum adjustment">
+                      +{formatCurrency(calculation.finalMonthlyCostCents - calculation.totalMonthlyCostCents)}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
 
             {/* Per-Order Breakdown */}
             <div className="bg-muted p-4 rounded-lg space-y-2">
