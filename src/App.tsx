@@ -87,8 +87,6 @@ function App() {
           <TabsContent value="calculator">
             <QuoteCalculator
               onQuoteCalculated={handleQuoteCalculated}
-              rateCards={rateCards}
-              loading={loading}
             />
           </TabsContent>
 

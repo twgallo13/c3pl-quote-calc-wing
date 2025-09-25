@@ -24,25 +24,27 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { Calculator, FloppyDisk, Download } from '@phosphor-icons/react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Calculator, FloppyDisk, Download, Warning } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { RateCard, ScopeInput, QuoteCalculation, Quote } from '@/lib/types';
 import { calculateQuote, formatCurrency, formatPercentage, normalizeShippingSizeMix } from '@/lib/calculator';
-import { sampleRateCards } from '@/lib/sampleData';
+import { useRateCards } from '@/hooks/useRateCards';
 
 // Alias for ScenarioResult to match requested naming
 type ScenarioResult = QuoteCalculation;
 // Alias for calculateScenario to match requested naming
 const calculateScenario = calculateQuote;
 
-export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading }: {
+export default function QuoteCalculator({ onQuoteCalculated }: {
   onQuoteCalculated?: (quote: Quote) => void;
-  rateCards: RateCard[];
-  loading?: boolean;
 }) {
+  // Use the rate cards hook
+  const { data: rateCards, loading, error } = useRateCards();
+
   // State hooks as requested
   const [scope, setScope] = useState<ScopeInput>(initialScope);
-  const [selectedRateCard, setSelectedRateCard] = useState<RateCard>(sampleRateCards[0]);
+  const [selectedRateCard, setSelectedRateCard] = useState<RateCard | null>(null);
   const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(null);
 
   // Additional state for UI functionality
@@ -50,6 +52,13 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
   const [shippingMixTotal, setShippingMixTotal] = useState<number>(100);
   const [clientName, setClientName] = useState<string>('');
   const [quotes, setQuotes] = useState<Quote[]>([]);
+
+  // Initialize selected rate card when data loads
+  useEffect(() => {
+    if (rateCards && rateCards.length > 0 && !selectedRateCard) {
+      setSelectedRateCard(rateCards[0]);
+    }
+  }, [rateCards, selectedRateCard]);
 
   // Calculation effect - recalculate whenever scope or selectedRateCard changes
   useEffect(() => {
@@ -146,90 +155,143 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
     toast.success('Quote exported');
   };
 
-  if (loading || !rateCards) {
-    return <div>Loading...</div>;
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <div className="h-12 w-12 mx-auto animate-spin rounded-full border-4 border-muted border-t-primary"></div>
+          <p className="text-muted-foreground">Loading rate cards...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Alert className="max-w-md">
+          <Warning className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load rate cards. Please refresh the page to try again.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Handle empty state
+  if (!rateCards || rateCards.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Alert className="max-w-md">
+          <Warning className="h-4 w-4" />
+          <AlertDescription>
+            No rate cards available. Please contact your administrator.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-8 p-4 md:p-8">
-      {/* Column 1: Inputs */}
-      <div className="space-y-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calculator size={24} />
-              <CardTitle>Quote Calculator</CardTitle>
-            </div>
-            <Button variant="outline" onClick={() => setScope(initialScope)}>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 md:p-6">
+      {/* Left: Form */}
+      <div className="space-y-4">
+        <div className="rounded-2xl border p-4 bg-white">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Calculator size={20} />
+              Quote Calculator
+            </h3>
+            <Button variant="outline" size="sm" onClick={() => setScope(initialScope)}>
               Reset
             </Button>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Client Info */}
-            <div className="space-y-2">
-              <Label htmlFor="client-name">Client Name (Optional)</Label>
+          </div>
+
+          {/* Rate Card selector at top */}
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Select Rate Card</label>
+            <Select
+              value={selectedRateCard?.id || ''}
+              onValueChange={(value) => {
+                const rateCard = rateCards?.find(rc => rc.id === value);
+                if (rateCard) handleRateCardChange(rateCard);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose a rate card" />
+              </SelectTrigger>
+              <SelectContent>
+                {(rateCards ?? []).map(rc => (
+                  <SelectItem key={rc.id} value={rc.id}>
+                    {rc.name}{rc.version ? ` v${rc.version}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {loading && <p className="text-xs text-gray-500 mt-1">Loading rate cards…</p>}
+            {error && <p className="text-xs text-red-600 mt-1">Couldn't load rate cards.</p>}
+          </div>
+
+          {/* Client Name */}
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Client Name (Optional)</label>
+            <Input
+              type="text"
+              className="w-full px-3 py-2"
+              value={clientName}
+              onChange={e => setClientName(e.target.value)}
+              placeholder="Enter client name"
+            />
+          </div>
+
+          {/* Compact grid for the small fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Monthly Orders</label>
               <Input
-                id="client-name"
-                type="text"
-                value={clientName}
-                onChange={e => setClientName(e.target.value)}
-                aria-label="Client Name"
+                type="number"
+                className="w-full px-3 py-2"
+                min="0"
+                value={scope.monthlyOrders}
+                onChange={e => handleTopLevelScopeChange('monthlyOrders', parseInt(e.target.value) || 0)}
               />
             </div>
-            {/* Basic Parameters */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="monthly-orders">Monthly Orders</Label>
-                <Input
-                  id="monthly-orders"
-                  type="number"
-                  min="0"
-                  value={scope.monthlyOrders}
-                  onChange={e => handleTopLevelScopeChange('monthlyOrders', parseInt(e.target.value) || 0)}
-                  aria-describedby="monthly-orders-hint"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="units-per-order">Average Units per Order</Label>
-                <Input
-                  id="units-per-order"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={scope.averageUnitsPerOrder}
-                  onChange={e => handleTopLevelScopeChange('averageUnitsPerOrder', parseFloat(e.target.value) || 0)}
-                  aria-describedby="units-per-order-hint"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-              <p id="monthly-orders-hint">Number of orders expected per month</p>
-              <p id="units-per-order-hint">Average number of items per order</p>
-            </div>
-            {/* Order Value */}
-            <div className="space-y-2">
-              <Label htmlFor="order-value">Average Order Value ($)</Label>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Avg Units / Order</label>
               <Input
-                id="order-value"
                 type="number"
+                className="w-full px-3 py-2"
+                step="0.1"
+                min="0"
+                value={scope.averageUnitsPerOrder}
+                onChange={e => handleTopLevelScopeChange('averageUnitsPerOrder', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Avg Order Value ($)</label>
+              <Input
+                type="number"
+                className="w-full px-3 py-2"
                 step="0.01"
                 min="0"
                 value={scope.averageOrderValue}
                 onChange={e => handleTopLevelScopeChange('averageOrderValue', parseFloat(e.target.value) || 0)}
-                aria-describedby="order-value-hint"
               />
-              <p id="order-value-hint" className="text-xs text-muted-foreground">
-                Total dollar value of typical customer order
-              </p>
             </div>
-            {/* Shipping Model */}
-            <div className="space-y-2">
-              <Label htmlFor="shipping-model">Shipping Model</Label>
+          </div>
+
+          {/* Shipping Model row */}
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Shipping Model</label>
               <Select
                 value={scope.shippingModel}
                 onValueChange={value => handleTopLevelScopeChange('shippingModel', value)}
               >
-                <SelectTrigger id="shipping-model" aria-describedby="shipping-model-hint">
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -237,202 +299,130 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                   <SelectItem value="customerAccount">Customer Account</SelectItem>
                 </SelectContent>
               </Select>
-              <p id="shipping-model-hint" className="text-xs text-muted-foreground">
-                Choose between standard shipping rates or customer's own shipping account
-              </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Rate Card Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Rate Card</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="rate-card-select">Choose a pricing plan</Label>
-              <Select
-                value={selectedRateCard.id}
-                onValueChange={(value) => {
-                  const rateCard = sampleRateCards.find(rc => rc.id === value);
-                  if (rateCard) handleRateCardChange(rateCard);
-                }}
-              >
-                <SelectTrigger id="rate-card-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {sampleRateCards.map((rateCard) => (
-                    <SelectItem key={rateCard.id} value={rateCard.id}>
-                      {rateCard.name} {rateCard.version}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Storage Profile */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Storage Profile</CardTitle>
-            <CardDescription>Enter the average number of units in storage per month.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="small-units" className="text-sm">Small Units</Label>
+          {/* Storage inputs in a tight grid */}
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Storage Requirements</label>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Small Units</label>
                 <Input
-                  id="small-units"
                   type="number"
+                  className="w-full px-3 py-2"
                   min="0"
                   value={scope.storageRequirements.smallUnits}
                   onChange={e => handleScopeChange('storageRequirements', 'smallUnits', parseInt(e.target.value) || 0)}
-                  aria-describedby="small-units-hint"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="medium-units" className="text-sm">Medium Units</Label>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Medium Units</label>
                 <Input
-                  id="medium-units"
                   type="number"
+                  className="w-full px-3 py-2"
                   min="0"
                   value={scope.storageRequirements.mediumUnits}
                   onChange={e => handleScopeChange('storageRequirements', 'mediumUnits', parseInt(e.target.value) || 0)}
-                  aria-describedby="medium-units-hint"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="large-units" className="text-sm">Large Units</Label>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Large Units</label>
                 <Input
-                  id="large-units"
                   type="number"
+                  className="w-full px-3 py-2"
                   min="0"
                   value={scope.storageRequirements.largeUnits}
                   onChange={e => handleScopeChange('storageRequirements', 'largeUnits', parseInt(e.target.value) || 0)}
-                  aria-describedby="large-units-hint"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="pallets" className="text-sm">Pallets</Label>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Pallets</label>
                 <Input
-                  id="pallets"
                   type="number"
+                  className="w-full px-3 py-2"
                   min="0"
                   value={scope.storageRequirements.pallets}
                   onChange={e => handleScopeChange('storageRequirements', 'pallets', parseInt(e.target.value) || 0)}
-                  aria-describedby="pallets-hint"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-              <p id="small-units-hint">Number of small units stored monthly</p>
-              <p id="medium-units-hint">Number of medium units stored monthly</p>
-              <p id="large-units-hint">Number of large units stored monthly</p>
-              <p id="pallets-hint">Number of pallets stored monthly</p>
-            </div>
-          </CardContent>
-        </Card>
-        {/* Shipping Profile */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Shipping Profile</CardTitle>
-            <CardDescription>Enter the percentage mix of package sizes for outgoing orders.</CardDescription>
-          </CardHeader>
-          <CardContent>
+          </div>
+
+          {/* Shipping Size Mix */}
+          <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <Label>Shipping Size Mix (%)</Label>
+              <label className="text-sm font-medium text-gray-700">Shipping Size Mix (%)</label>
               <span
-                className={`text-sm font-medium ${Math.abs(shippingMixTotal - 100) < 0.1
+                className={`text-xs font-medium ${Math.abs(shippingMixTotal - 100) < 0.1
                   ? 'text-green-600'
                   : shippingMixTotal >= 99.5 && shippingMixTotal <= 100.5
                     ? 'text-amber-600'
                     : 'text-red-600'
                   }`}
-                aria-live="polite"
-                aria-label={`Shipping mix total: ${shippingMixTotal.toFixed(1)} percent`}
               >
                 Total: {shippingMixTotal.toFixed(1)}%
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="small-mix" className="text-sm">Small (%)</Label>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Small (%)</label>
                 <Input
-                  id="small-mix"
                   type="number"
+                  className="w-full px-3 py-2"
                   step="0.1"
                   min="0"
                   max="100"
                   value={scope.shippingSizeMix.small}
                   onChange={e => handleScopeChange('shippingSizeMix', 'small', parseFloat(e.target.value) || 0)}
-                  aria-describedby="shipping-mix-hint"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="medium-mix" className="text-sm">Medium (%)</Label>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Medium (%)</label>
                 <Input
-                  id="medium-mix"
                   type="number"
+                  className="w-full px-3 py-2"
                   step="0.1"
                   min="0"
                   max="100"
                   value={scope.shippingSizeMix.medium}
                   onChange={e => handleScopeChange('shippingSizeMix', 'medium', parseFloat(e.target.value) || 0)}
-                  aria-describedby="shipping-mix-hint"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="large-mix" className="text-sm">Large (%)</Label>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Large (%)</label>
                 <Input
-                  id="large-mix"
                   type="number"
+                  className="w-full px-3 py-2"
                   step="0.1"
                   min="0"
                   max="100"
                   value={scope.shippingSizeMix.large}
                   onChange={e => handleScopeChange('shippingSizeMix', 'large', parseFloat(e.target.value) || 0)}
-                  aria-describedby="shipping-mix-hint"
                 />
               </div>
             </div>
             {normalizationHint && (
-              <Badge
-                id="shipping-mix-hint"
-                variant={
-                  normalizationHint.includes('auto-normalized')
-                    ? 'default'
-                    : normalizationHint.includes('Warning')
-                      ? 'destructive'
-                      : 'secondary'
-                }
-                className="text-xs"
-                aria-live="polite"
-              >
-                {normalizationHint}
-              </Badge>
+              <p className="text-xs text-gray-500 mt-1">{normalizationHint}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Percentages between 99.5% and 100.5% will be auto-normalized to total 100%
-            </p>
-          </CardContent>
-        </Card>
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button onClick={saveQuote} disabled={!scenarioResult} className="flex-1">
-            <FloppyDisk size={16} className="mr-2" />
-            Save Quote
-          </Button>
-          <Button onClick={exportQuote} disabled={!scenarioResult} variant="outline">
-            <Download size={16} className="mr-2" />
-            Export
-          </Button>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <Button onClick={saveQuote} disabled={!scenarioResult} className="flex-1">
+              <FloppyDisk size={16} className="mr-2" />
+              Save Quote
+            </Button>
+            <Button onClick={exportQuote} disabled={!scenarioResult} variant="outline">
+              <Download size={16} className="mr-2" />
+              Export
+            </Button>
+          </div>
         </div>
       </div>
-      {/* Column 2: Results */}
-      <div>
+
+      {/* Right: Estimate card */}
+      <div className="lg:sticky lg:top-4">
         <Card>
           <CardHeader>
             <CardTitle>Quote Estimate</CardTitle>
