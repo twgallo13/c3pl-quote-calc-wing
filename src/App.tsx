@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, ClockCounterClockwise, TestTube, ArrowsLeftRight } from '@phosphor-icons/react';
+import { Calculator, ClockCounterClockwise, TestTube, ArrowsLeftRight, Shield } from '@phosphor-icons/react';
 import QuoteCalculator from './components/QuoteCalculator';
 import QuoteHistory from './components/QuoteHistory';
 import { ClientHarmonizationTool } from './components/ClientHarmonizationTool';
+import { RateCardManagement } from './components/RateCardManagement';
 import QuotePage from './pages/quote';
 import type { Quote } from './lib/types';
 import { APP_VERSION } from '@momentum/version';
@@ -32,7 +33,7 @@ function App() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="calculator" className="flex items-center gap-2">
               <Calculator size={18} />
               Quote Calculator
@@ -44,6 +45,10 @@ function App() {
             <TabsTrigger value="harmonization" className="flex items-center gap-2">
               <ArrowsLeftRight size={18} />
               Client Harmonization
+            </TabsTrigger>
+            <TabsTrigger value="ratecards" className="flex items-center gap-2">
+              <Shield size={18} />
+              Rate Card Management
             </TabsTrigger>
             <TabsTrigger value="quote" className="flex items-center gap-2">
               <TestTube size={18} />
@@ -61,6 +66,10 @@ function App() {
 
           <TabsContent value="harmonization">
             <ClientHarmonizationTool />
+          </TabsContent>
+
+          <TabsContent value="ratecards">
+            <RateCardManagement />
           </TabsContent>
 
           <TabsContent value="quote">
