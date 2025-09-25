@@ -243,7 +243,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Rate Card Selection */}
         <Card>
           <CardHeader>
@@ -273,7 +273,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Storage Profile */}
         <Card>
           <CardHeader>
