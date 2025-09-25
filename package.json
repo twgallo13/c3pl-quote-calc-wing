@@ -1,7 +1,7 @@
 {
     "name": "spark-template",
     "private": true,
-    "version": "3.1.0",
+    "version": "3.0.0",
     "type": "module",
     "scripts": {
         "dev": "pnpm --filter \"./apps/*\" --parallel dev",
@@ -15,9 +15,7 @@
         "db:generate": "prisma generate",
         "db:studio": "prisma studio",
         "db:seed": "ts-node prisma/seed.ts",
-        "db:seed:node": "node prisma/seed.mjs",
-        "build:packages": "pnpm --filter @momentum/version build && pnpm --filter @momentum/calc build",
-        "clean:packages": "pnpm --filter @momentum/version clean && pnpm --filter @momentum/calc clean"
+        "db:seed:node": "node prisma/seed.mjs"
     },
     "dependencies": {
         "@github/spark": "^0.39.0",

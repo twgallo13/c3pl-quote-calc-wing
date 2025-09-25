@@ -92,6 +92,56 @@ app.post('/api/rate-cards', async (req, res) => {
     }
 });
 
+// Update rate card
+app.put('/api/rate-cards/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        // Check if rate card exists
+        const existingRateCard = await prisma.rateCard.findUnique({
+            where: { id }
+        });
+        if (!existingRateCard) {
+            return res.status(404).json({ error: 'Rate card not found' });
+        }
+
+        // Generate new version number (increment patch version)
+        const versionParts = existingRateCard.version.replace('v', '').split('.');
+        const major = parseInt(versionParts[0] || '1');
+        const minor = parseInt(versionParts[1] || '0');
+        const patch = parseInt(versionParts[2] || '0') + 1;
+        const newVersion = `v${major}.${minor}.${patch}`;
+
+        // Prepare update data
+        const dataToUpdate = {
+            version: newVersion,
+            updatedAt: new Date()
+        };
+
+        if (updateData.name !== undefined) dataToUpdate.name = updateData.name;
+        if (updateData.monthly_minimum_cents !== undefined) dataToUpdate.monthly_minimum_cents = updateData.monthly_minimum_cents;
+        if (updateData.prices !== undefined) dataToUpdate.prices = updateData.prices;
+        if (updateData.version_notes !== undefined) dataToUpdate.version_notes = updateData.version_notes;
+
+        // Update rate card
+        const updatedRateCard = await prisma.rateCard.update({
+            where: { id },
+            data: dataToUpdate
+        });
+
+        console.log(`Rate card updated: ${id} ${existingRateCard.version} -> ${newVersion}`);
+        res.json({
+            rateCard: updatedRateCard,
+            previousVersion: existingRateCard.version,
+            appVersion: "3.0.0"
+        });
+    } catch (error) {
+        console.error('Error updating rate card:', error);
+        res.status(500).json({ error: 'Failed to update rate card' });
+    }
+});
+
 // Simple quotes endpoint  
 app.get('/api/quotes', async (req, res) => {
     try {
