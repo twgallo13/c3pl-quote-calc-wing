@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { type Request, type Response } from 'express';
 import quotesRoutes from './routes/quotes';
 import ratecardsRoutes from './routes/ratecards';
