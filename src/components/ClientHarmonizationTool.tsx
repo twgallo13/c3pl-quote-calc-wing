@@ -73,7 +73,7 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
     const [actionLoading, setActionLoading] = useState(false);
     const [clientName, setClientName] = useState('');
     const [notes, setNotes] = useState('');
-    
+
     // Additional state variables as specified in the prompt
     const [newPrice, setNewPrice] = useState<number>(0);
     const [delta, setDelta] = useState<number>(0);
@@ -125,7 +125,7 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
         const targetPrice = targetQuote?.totalMonthlyCostCents || 0;
         const clientScope = scope;
         const baselineRateCard = rateCards.find(card => card.id === sourceRateCard);
-        
+
         if (!baselineRateCard || !targetPrice || !clientScope) return;
 
         // Convert target price to cents (already in cents)
@@ -141,7 +141,7 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
         const deltaCents = newPriceCents - targetPriceCents;
 
         // Calculate the required discount percentage (handle division by zero)
-        const requiredDiscountPercent = newPriceCents > 0 ? 
+        const requiredDiscountPercent = newPriceCents > 0 ?
             parseFloat(((deltaCents / newPriceCents) * 100).toFixed(2)) : 0;
 
         // Update the component's state with all the new values
@@ -662,112 +662,197 @@ export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizat
                         </Card>
                     </div>
 
-                    {/* Scope Configuration */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Client Scope Parameters</CardTitle>
-                            <CardDescription>Configure the client's shipping and order profile</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <Label htmlFor="monthly-orders">Monthly Orders</Label>
-                                    <Input
-                                        id="monthly-orders"
-                                        type="number"
-                                        value={scope.monthlyOrders}
-                                        onChange={(e) => setScope(prev => ({ ...prev, monthlyOrders: Number(e.target.value) }))}
-                                    />
+                        {/* Basic Client Parameters */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Basic Order Parameters</CardTitle>
+                                <CardDescription>Configure the client's fundamental order characteristics</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <Label htmlFor="monthly-orders">Monthly Orders</Label>
+                                        <Input
+                                            id="monthly-orders"
+                                            type="number"
+                                            value={scope.monthlyOrders}
+                                            onChange={(e) => setScope(prev => ({ ...prev, monthlyOrders: Number(e.target.value) }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="avg-units">Avg Units per Order</Label>
+                                        <Input
+                                            id="avg-units"
+                                            type="number"
+                                            step="0.1"
+                                            value={scope.averageUnitsPerOrder}
+                                            onChange={(e) => setScope(prev => ({ ...prev, averageUnitsPerOrder: Number(e.target.value) }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="avg-value">Avg Order Value ($)</Label>
+                                        <Input
+                                            id="avg-value"
+                                            type="number"
+                                            step="0.01"
+                                            value={scope.averageOrderValue}
+                                            onChange={(e) => setScope(prev => ({ ...prev, averageOrderValue: Number(e.target.value) }))}
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <Label htmlFor="avg-units">Avg Units per Order</Label>
-                                    <Input
-                                        id="avg-units"
-                                        type="number"
-                                        step="0.1"
-                                        value={scope.averageUnitsPerOrder}
-                                        onChange={(e) => setScope(prev => ({ ...prev, averageUnitsPerOrder: Number(e.target.value) }))}
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="avg-value">Avg Order Value ($)</Label>
-                                    <Input
-                                        id="avg-value"
-                                        type="number"
-                                        step="0.01"
-                                        value={scope.averageOrderValue}
-                                        onChange={(e) => setScope(prev => ({ ...prev, averageOrderValue: Number(e.target.value) }))}
-                                    />
-                                </div>
-                            </div>
+                            </CardContent>
+                        </Card>
 
-                            <div className="mt-4">
-                                <Label>Shipping Model</Label>
-                                <Select
-                                    value={scope.shippingModel}
-                                    onValueChange={(value: 'standard' | 'customerAccount') =>
-                                        setScope(prev => ({ ...prev, shippingModel: value }))
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="standard">Standard</SelectItem>
-                                        <SelectItem value="customerAccount">Customer Account</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="mt-4 space-y-3">
-                                <Label>Shipping Size Mix (%)</Label>
-                                <div className="grid grid-cols-3 gap-4">
+                        {/* Storage Profile */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Storage Profile</CardTitle>
+                                <CardDescription>Enter the average number of units in storage per month.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <div>
-                                        <Label className="text-sm">Small: {scope.shippingSizeMix.small}%</Label>
-                                        <Slider
-                                            value={[scope.shippingSizeMix.small]}
-                                            onValueChange={([value]) =>
-                                                setScope(prev => ({
-                                                    ...prev,
-                                                    shippingSizeMix: { ...prev.shippingSizeMix, small: value }
-                                                }))
-                                            }
-                                            max={100}
-                                            step={1}
+                                        <Label htmlFor="small-units">Small Units</Label>
+                                        <Input
+                                            id="small-units"
+                                            type="number"
+                                            min="0"
+                                            value={scope.storageRequirements.smallUnits}
+                                            onChange={(e) => setScope(prev => ({
+                                                ...prev,
+                                                storageRequirements: {
+                                                    ...prev.storageRequirements,
+                                                    smallUnits: Number(e.target.value) || 0
+                                                }
+                                            }))}
                                         />
                                     </div>
                                     <div>
-                                        <Label className="text-sm">Medium: {scope.shippingSizeMix.medium}%</Label>
-                                        <Slider
-                                            value={[scope.shippingSizeMix.medium]}
-                                            onValueChange={([value]) =>
-                                                setScope(prev => ({
-                                                    ...prev,
-                                                    shippingSizeMix: { ...prev.shippingSizeMix, medium: value }
-                                                }))
-                                            }
-                                            max={100}
-                                            step={1}
+                                        <Label htmlFor="medium-units">Medium Units</Label>
+                                        <Input
+                                            id="medium-units"
+                                            type="number"
+                                            min="0"
+                                            value={scope.storageRequirements.mediumUnits}
+                                            onChange={(e) => setScope(prev => ({
+                                                ...prev,
+                                                storageRequirements: {
+                                                    ...prev.storageRequirements,
+                                                    mediumUnits: Number(e.target.value) || 0
+                                                }
+                                            }))}
                                         />
                                     </div>
                                     <div>
-                                        <Label className="text-sm">Large: {scope.shippingSizeMix.large}%</Label>
-                                        <Slider
-                                            value={[scope.shippingSizeMix.large]}
-                                            onValueChange={([value]) =>
-                                                setScope(prev => ({
-                                                    ...prev,
-                                                    shippingSizeMix: { ...prev.shippingSizeMix, large: value }
-                                                }))
-                                            }
-                                            max={100}
-                                            step={1}
+                                        <Label htmlFor="large-units">Large Units</Label>
+                                        <Input
+                                            id="large-units"
+                                            type="number"
+                                            min="0"
+                                            value={scope.storageRequirements.largeUnits}
+                                            onChange={(e) => setScope(prev => ({
+                                                ...prev,
+                                                storageRequirements: {
+                                                    ...prev.storageRequirements,
+                                                    largeUnits: Number(e.target.value) || 0
+                                                }
+                                            }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="pallets">Pallets</Label>
+                                        <Input
+                                            id="pallets"
+                                            type="number"
+                                            min="0"
+                                            value={scope.storageRequirements.pallets}
+                                            onChange={(e) => setScope(prev => ({
+                                                ...prev,
+                                                storageRequirements: {
+                                                    ...prev.storageRequirements,
+                                                    pallets: Number(e.target.value) || 0
+                                                }
+                                            }))}
                                         />
                                     </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+
+                        {/* Shipping Profile */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Shipping Profile</CardTitle>
+                                <CardDescription>Enter the percentage mix of package sizes for outgoing orders.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="mb-4">
+                                    <Label>Shipping Model</Label>
+                                    <Select
+                                        value={scope.shippingModel}
+                                        onValueChange={(value: 'standard' | 'customerAccount') =>
+                                            setScope(prev => ({ ...prev, shippingModel: value }))
+                                        }
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="standard">Standard</SelectItem>
+                                            <SelectItem value="customerAccount">Customer Account</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <Label>Package Size Mix</Label>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <Label className="text-sm">Small (%): {scope.shippingSizeMix.small}%</Label>
+                                            <Slider
+                                                value={[scope.shippingSizeMix.small]}
+                                                onValueChange={([value]) =>
+                                                    setScope(prev => ({
+                                                        ...prev,
+                                                        shippingSizeMix: { ...prev.shippingSizeMix, small: value }
+                                                    }))
+                                                }
+                                                max={100}
+                                                step={1}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm">Medium (%): {scope.shippingSizeMix.medium}%</Label>
+                                            <Slider
+                                                value={[scope.shippingSizeMix.medium]}
+                                                onValueChange={([value]) =>
+                                                    setScope(prev => ({
+                                                        ...prev,
+                                                        shippingSizeMix: { ...prev.shippingSizeMix, medium: value }
+                                                    }))
+                                                }
+                                                max={100}
+                                                step={1}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-sm">Large (%): {scope.shippingSizeMix.large}%</Label>
+                                            <Slider
+                                                value={[scope.shippingSizeMix.large]}
+                                                onValueChange={([value]) =>
+                                                    setScope(prev => ({
+                                                        ...prev,
+                                                        shippingSizeMix: { ...prev.shippingSizeMix, large: value }
+                                                    }))
+                                                }
+                                                max={100}
+                                                step={1}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
 
                     {/* Export Summary Button for Comparison */}
                     {sourceQuote && targetQuote && discountAnalysis && (
