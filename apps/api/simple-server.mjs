@@ -31,7 +31,7 @@ app.get('/health', (req, res) => {
 });
 
 // Simple rate cards endpoint
-app.get('/api/ratecards', async (req, res) => {
+app.get('/api/rate-cards', async (req, res) => {
     try {
         const rateCards = await prisma.rateCard.findMany({
             orderBy: { name: 'asc' }
@@ -44,7 +44,7 @@ app.get('/api/ratecards', async (req, res) => {
 });
 
 // Get single rate card by ID
-app.get('/api/ratecards/:id', async (req, res) => {
+app.get('/api/rate-cards/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const rateCard = await prisma.rateCard.findUnique({
@@ -61,7 +61,7 @@ app.get('/api/ratecards/:id', async (req, res) => {
 });
 
 // Create new rate card
-app.post('/api/ratecards', async (req, res) => {
+app.post('/api/rate-cards', async (req, res) => {
     try {
         const rateCardData = req.body;
         if (!rateCardData.id || !rateCardData.name) {
