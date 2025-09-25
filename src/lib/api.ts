@@ -19,9 +19,15 @@ export async function fetchQuotePreview(scope: any, rateCardId: string) {
 
 // Rate Card Management API functions
 export async function fetchRateCards() {
-  const res = await fetch('/api/ratecards');
-  if (!res.ok) throw new Error(`API error ${res.status}`);
-  return res.json() as Promise<{ rateCards: RateCard[]; appVersion: string }>;
+  try {
+    const res = await fetch('/api/ratecards');
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    return { rateCards: data, appVersion: APP_VERSION };
+  } catch (error) {
+    console.error('Failed to fetch rate cards:', error);
+    return { rateCards: [], appVersion: APP_VERSION };
+  }
 }
 
 export async function fetchRateCard(id: string) {
