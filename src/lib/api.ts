@@ -31,44 +31,68 @@ export async function fetchRateCards() {
 }
 
 export async function fetchRateCard(id: string) {
-  const res = await fetch(`/api/ratecards/${id}`);
-  if (!res.ok) throw new Error(`API error ${res.status}`);
-  return res.json() as Promise<{ rateCard: RateCard; appVersion: string }>;
+  try {
+    const res = await fetch(`/api/ratecards/${id}`);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const rateCard = await res.json();
+    return { rateCard, appVersion: APP_VERSION };
+  } catch (error) {
+    console.error('Failed to fetch rate card:', error);
+    throw error;
+  }
 }
 
 export async function createRateCard(rateCard: RateCard & { versionNotes?: string }) {
-  const res = await fetch('/api/ratecards', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(rateCard)
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || `API error ${res.status}`);
+  try {
+    const res = await fetch('/api/ratecards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rateCard)
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || `API error ${res.status}`);
+    }
+    const createdRateCard = await res.json();
+    return { rateCard: createdRateCard, appVersion: APP_VERSION };
+  } catch (error) {
+    console.error('Failed to create rate card:', error);
+    throw error;
   }
-  return res.json() as Promise<{ rateCard: RateCard; appVersion: string }>;
 }
 
-export async function updateRateCard(id: string, updates: Partial<RateCard> & { versionNotes: string }) {
-  const res = await fetch(`/api/ratecards/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates)
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || `API error ${res.status}`);
+export async function updateRateCard(id: string, updates: Partial<RateCard> & { versionNotes?: string }) {
+  try {
+    const res = await fetch(`/api/ratecards/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || `API error ${res.status}`);
+    }
+    const updatedRateCard = await res.json();
+    return { rateCard: updatedRateCard, appVersion: APP_VERSION };
+  } catch (error) {
+    console.error('Failed to update rate card:', error);
+    throw error;
   }
-  return res.json() as Promise<{ rateCard: RateCard; previousVersion: string; appVersion: string }>;
 }
 
 export async function deleteRateCard(id: string) {
-  const res = await fetch(`/api/ratecards/${id}`, {
-    method: 'DELETE'
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || `API error ${res.status}`);
+  try {
+    const res = await fetch(`/api/ratecards/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || `API error ${res.status}`);
+    }
+    const result = await res.json();
+    return { message: result.message, appVersion: APP_VERSION };
+  } catch (error) {
+    console.error('Failed to delete rate card:', error);
+    throw error;
   }
-  return res.json() as Promise<{ message: string; appVersion: string }>;
 }
