@@ -1,0 +1,40 @@
+// Prisma schema for C3PL Quote Calculator
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RateCard {
+  id                    String @id
+  name                  String
+  version               String
+  monthly_minimum_cents Int
+  prices                Json
+
+  // Relations
+  Quote Quote[]
+}
+
+model Quote {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  rateCardId  String
+  rateCardVer String
+  totals      Json
+
+  // Relations
+  rateCard RateCard @relation(fields: [rateCardId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+
+  @@index([rateCardId])
+}
+
+model Scenario {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  details   Json
+}
