@@ -15,6 +15,11 @@ import { fetchQuotePreview, QuoteBreakdown as ApiQuoteBreakdown } from '@/lib/ap
 import { QuoteCalculation, ScopeInput, RateCard } from '@/lib/types';
 import { APP_VERSION } from '@momentum/version';
 
+interface ClientHarmonizationToolProps {
+    rateCards: RateCard[];
+    loading: boolean;
+}
+
 interface DiscountSettings {
     global: number;
     fulfillment: number;
@@ -37,50 +42,7 @@ interface DiscountWarning {
     threshold: number;
 }
 
-const SAMPLE_RATE_CARDS: RateCard[] = [
-    {
-        id: "rc-startup-2025",
-        name: "Startup Plan 2025",
-        version: "v1.0.0",
-        monthly_minimum_cents: 150000,
-        prices: {
-            fulfillment: { aovPercentage: 0.05, baseFeeCents: 275, perAdditionalUnitCents: 95 },
-            storage: { smallUnitCents: 80, mediumUnitCents: 160, largeUnitCents: 275, palletCents: 8500 },
-            shippingAndHandling: {
-                standard: { smallPackageCents: 325, mediumPackageCents: 650, largePackageCents: 1250 },
-                customerAccount: { smallPackageCents: 100, mediumPackageCents: 150, largePackageCents: 275 }
-            }
-        }
-    },
-    {
-        id: "rc-growth-2025",
-        name: "Growth Plan 2025",
-        version: "v1.0.0",
-        monthly_minimum_cents: 300000,
-        prices: {
-            fulfillment: { aovPercentage: 0.05, baseFeeCents: 250, perAdditionalUnitCents: 75 },
-            storage: { smallUnitCents: 75, mediumUnitCents: 150, largeUnitCents: 250, palletCents: 7500 },
-            shippingAndHandling: {
-                standard: { smallPackageCents: 300, mediumPackageCents: 600, largePackageCents: 1200 },
-                customerAccount: { smallPackageCents: 75, mediumPackageCents: 125, largePackageCents: 250 }
-            }
-        }
-    },
-    {
-        id: "rc-enterprise-2025",
-        name: "Enterprise Plan 2025",
-        version: "v1.0.0",
-        monthly_minimum_cents: 750000,
-        prices: {
-            fulfillment: { aovPercentage: 0.04, baseFeeCents: 200, perAdditionalUnitCents: 50 },
-            storage: { smallUnitCents: 60, mediumUnitCents: 120, largeUnitCents: 200, palletCents: 6000 },
-            shippingAndHandling: {
-                standard: { smallPackageCents: 285, mediumPackageCents: 585, largePackageCents: 1185 },
-                customerAccount: { smallPackageCents: 50, mediumPackageCents: 100, largePackageCents: 225 }
-            }
-        }
-    }
-];
+
 
 const DEFAULT_SCOPE: ScopeInput = {
     monthlyOrders: 1000,
@@ -97,7 +59,7 @@ const DEFAULT_DISCOUNT_SETTINGS: DiscountSettings = {
     shippingAndHandling: 30
 };
 
-export function ClientHarmonizationTool() {
+export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizationToolProps) {
     const [sourceRateCard, setSourceRateCard] = useState<string>('');
     const [targetRateCard, setTargetRateCard] = useState<string>('');
     const [scope, setScope] = useState<ScopeInput>(DEFAULT_SCOPE);
@@ -107,12 +69,12 @@ export function ClientHarmonizationTool() {
     const [targetQuote, setTargetQuote] = useState<QuoteBreakdown | null>(null);
     const [harmonizedQuote, setHarmonizedQuote] = useState<QuoteBreakdown | null>(null);
     const [harmonizedRateCard, setHarmonizedRateCard] = useState<RateCard | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
     const [clientName, setClientName] = useState('');
     const [notes, setNotes] = useState('');
 
-    const sourceCard = SAMPLE_RATE_CARDS.find(card => card.id === sourceRateCard);
-    const targetCard = SAMPLE_RATE_CARDS.find(card => card.id === targetRateCard);
+    const sourceCard = rateCards.find(card => card.id === sourceRateCard);
+    const targetCard = rateCards.find(card => card.id === targetRateCard);
 
     // Calculate quotes when rate cards or scope changes
     useEffect(() => {
@@ -129,7 +91,7 @@ export function ClientHarmonizationTool() {
 
     const calculateQuote = async (rateCardId: string, setQuote: (quote: QuoteBreakdown) => void) => {
         try {
-            setLoading(true);
+            setActionLoading(true);
             const result = await fetchQuotePreview(scope, rateCardId);
 
             // Convert API response to our expected format
@@ -145,7 +107,7 @@ export function ClientHarmonizationTool() {
         } catch (error) {
             console.error('Failed to calculate quote:', error);
         } finally {
-            setLoading(false);
+            setActionLoading(false);
         }
     };
 
@@ -276,6 +238,18 @@ export function ClientHarmonizationTool() {
     const formatPercentage = (value: number) => {
         return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
     };
+
+    // Show loading state while rate cards are being fetched
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="text-center space-y-4">
+                    <ArrowLeftRight className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
+                    <p className="text-muted-foreground">Loading rate cards...</p>
+                </div>
+            </div>
+        );
+    }
 
     const downloadHarmonizationReport = () => {
         if (!harmonizedRateCard || !sourceQuote || !targetQuote || !harmonizedQuote) return;
@@ -445,7 +419,7 @@ export function ClientHarmonizationTool() {
                                         <SelectValue placeholder="Select source rate card" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {SAMPLE_RATE_CARDS.map((card) => (
+                                        {rateCards.map((card) => (
                                             <SelectItem key={card.id} value={card.id}>
                                                 {card.name} ({card.version})
                                             </SelectItem>
@@ -469,7 +443,7 @@ export function ClientHarmonizationTool() {
                                         <SelectValue placeholder="Select target rate card" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {SAMPLE_RATE_CARDS.map((card) => (
+                                        {rateCards.map((card) => (
                                             <SelectItem key={card.id} value={card.id}>
                                                 {card.name} ({card.version})
                                             </SelectItem>
