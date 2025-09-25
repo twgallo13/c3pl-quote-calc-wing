@@ -243,6 +243,37 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
             </div>
           </CardContent>
         </Card>
+        
+        {/* Rate Card Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Rate Card</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="rate-card-select">Choose a pricing plan</Label>
+              <Select
+                value={selectedRateCard.id}
+                onValueChange={(value) => {
+                  const rateCard = sampleRateCards.find(rc => rc.id === value);
+                  if (rateCard) handleRateCardChange(rateCard);
+                }}
+              >
+                <SelectTrigger id="rate-card-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sampleRateCards.map((rateCard) => (
+                    <SelectItem key={rateCard.id} value={rateCard.id}>
+                      {rateCard.name} {rateCard.version}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+        
         {/* Storage Profile */}
         <Card>
           <CardHeader>
@@ -405,27 +436,6 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
         <Card>
           <CardHeader>
             <CardTitle>Quote Estimate</CardTitle>
-            <div className="space-y-2">
-              <Label htmlFor="rate-card-select">Select Rate Card</Label>
-              <Select
-                value={selectedRateCard.id}
-                onValueChange={(value) => {
-                  const rateCard = sampleRateCards.find(rc => rc.id === value);
-                  if (rateCard) handleRateCardChange(rateCard);
-                }}
-              >
-                <SelectTrigger id="rate-card-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {sampleRateCards.map((rateCard) => (
-                    <SelectItem key={rateCard.id} value={rateCard.id}>
-                      {rateCard.name} {rateCard.version}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </CardHeader>
           {scenarioResult && (
             <CardContent className="space-y-4">
@@ -436,7 +446,7 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
                 </div>
                 <div className="text-sm text-muted-foreground">per month</div>
               </div>
-              
+
               {/* Cost Breakdown Table */}
               <Table>
                 <TableBody>
