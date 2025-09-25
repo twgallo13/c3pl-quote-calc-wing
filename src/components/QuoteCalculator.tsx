@@ -1,3 +1,21 @@
+// Initial empty state for the form
+const initialScope: ScopeInput = {
+  monthlyOrders: 0,
+  averageUnitsPerOrder: 0,
+  averageOrderValue: 0,
+  shippingModel: 'standard',
+  storageRequirements: {
+    smallUnits: 0,
+    mediumUnits: 0,
+    largeUnits: 0,
+    pallets: 0,
+  },
+  shippingSizeMix: {
+    small: 0,
+    medium: 0,
+    large: 0,
+  },
+};
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,15 +34,8 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
   rateCards: RateCard[];
   loading?: boolean;
 }) {
-// ...rest of the file remains unchanged, all logic and JSX should be inside this function
-  const [scopeInput, setScopeInput] = useState<ScopeInput>({
-    monthlyOrders: 1000,
-    averageUnitsPerOrder: 2,
-    averageOrderValue: 75,
-    shippingModel: 'standard',
-    shippingSizeMix: { small: 60, medium: 30, large: 10 },
-    storageRequirements: { smallUnits: 100, mediumUnits: 50, largeUnits: 25, pallets: 2 }
-  });
+  // ...rest of the file remains unchanged, all logic and JSX should be inside this function
+  const [scopeInput, setScopeInput] = useState<ScopeInput>(initialScope);
 
   const [calculation, setCalculation] = useState<QuoteCalculation | null>(null);
   const [normalizationHint, setNormalizationHint] = useState<string>('');
@@ -123,294 +134,294 @@ export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading 
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Input Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator size={24} />
-            Quote Calculator
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Client Info */}
-          <div className="space-y-2">
-            <Label htmlFor="client-name">Client Name (Optional)</Label>
-            <Input
-              id="client-name"
-              type="text"
-              value={clientName}
-              onChange={e => setClientName(e.target.value)}
-              aria-label="Client Name"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-            <p id="monthly-orders-hint">Number of orders expected per month</p>
-            <p id="units-per-order-hint">Average number of items per order</p>
-          </div>
-
-          {/* Order Value */}
-          <div className="space-y-2">
-            <Label htmlFor="order-value">Average Order Value ($)</Label>
-            <Input
-              id="order-value"
-              type="number"
-              step="0.01"
-              min="0"
-              value={scopeInput.averageOrderValue}
-              onChange={e => handleScopeChange('averageOrderValue', '', parseFloat(e.target.value) || 0)}
-              aria-describedby="order-value-hint"
-            />
-            <p id="order-value-hint" className="text-xs text-muted-foreground">
-              Total dollar value of typical customer order
-            </p>
-          </div>
-
-          {/* Shipping Model */}
-          <div className="space-y-2">
-            <Label htmlFor="shipping-model">Shipping Model</Label>
-            <Select
-              value={scopeInput.shippingModel}
-              onValueChange={value => handleScopeChange('shippingModel', '', value)}
-            >
-              <SelectTrigger id="shipping-model" aria-describedby="shipping-model-hint">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="standard">Standard Rates</SelectItem>
-                <SelectItem value="customerAccount">Customer Account</SelectItem>
-              </SelectContent>
-            </Select>
-            <p id="shipping-model-hint" className="text-xs text-muted-foreground">
-              Choose between standard shipping rates or customer's own shipping account
-            </p>
-          </div>
-
-          {/* Storage Profile */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Storage Profile</CardTitle>
-              <CardDescription>Enter the average number of units in storage per month.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="small-units" className="text-sm">Small Units</Label>
-                  <Input
-                    id="small-units"
-                    type="number"
-                    min="0"
-                    value={scopeInput.storageRequirements.smallUnits}
-                    onChange={e => handleScopeChange('storageRequirements', 'smallUnits', parseInt(e.target.value) || 0)}
-                    aria-describedby="small-units-hint"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="medium-units" className="text-sm">Medium Units</Label>
-                  <Input
-                    id="medium-units"
-                    type="number"
-                    min="0"
-                    value={scopeInput.storageRequirements.mediumUnits}
-                    onChange={e => handleScopeChange('storageRequirements', 'mediumUnits', parseInt(e.target.value) || 0)}
-                    aria-describedby="medium-units-hint"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="large-units" className="text-sm">Large Units</Label>
-                  <Input
-                    id="large-units"
-                    type="number"
-                    min="0"
-                    value={scopeInput.storageRequirements.largeUnits}
-                    onChange={e => handleScopeChange('storageRequirements', 'largeUnits', parseInt(e.target.value) || 0)}
-                    aria-describedby="large-units-hint"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pallets" className="text-sm">Pallets</Label>
-                  <Input
-                    id="pallets"
-                    type="number"
-                    min="0"
-                    value={scopeInput.storageRequirements.pallets}
-                    onChange={e => handleScopeChange('storageRequirements', 'pallets', parseInt(e.target.value) || 0)}
-                    aria-describedby="pallets-hint"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-                <p id="small-units-hint">Number of small units stored monthly</p>
-                <p id="medium-units-hint">Number of medium units stored monthly</p>
-                <p id="large-units-hint">Number of large units stored monthly</p>
-                <p id="pallets-hint">Number of pallets stored monthly</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Shipping Profile */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Shipping Profile</CardTitle>
-              <CardDescription>Enter the percentage mix of package sizes for outgoing orders.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between mb-2">
-                <Label>Shipping Size Mix (%)</Label>
-                <span
-                  className={`text-sm font-medium ${Math.abs(shippingMixTotal - 100) < 0.1
-                    ? 'text-green-600'
-                    : shippingMixTotal >= 99.5 && shippingMixTotal <= 100.5
-                      ? 'text-amber-600'
-                      : 'text-red-600'
-                    }`}
-                  aria-live="polite"
-                  aria-label={`Shipping mix total: ${shippingMixTotal.toFixed(1)} percent`}
-                >
-                  Total: {shippingMixTotal.toFixed(1)}%
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="small-mix" className="text-sm">Small (%)</Label>
-                  <Input
-                    id="small-mix"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={scopeInput.shippingSizeMix.small}
-                    onChange={e => handleScopeChange('shippingSizeMix', 'small', parseFloat(e.target.value) || 0)}
-                    aria-describedby="shipping-mix-hint"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="medium-mix" className="text-sm">Medium (%)</Label>
-                  <Input
-                    id="medium-mix"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={scopeInput.shippingSizeMix.medium}
-                    onChange={e => handleScopeChange('shippingSizeMix', 'medium', parseFloat(e.target.value) || 0)}
-                    aria-describedby="shipping-mix-hint"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="large-mix" className="text-sm">Large (%)</Label>
-                  <Input
-                    id="large-mix"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={scopeInput.shippingSizeMix.large}
-                    onChange={e => handleScopeChange('shippingSizeMix', 'large', parseFloat(e.target.value) || 0)}
-                    aria-describedby="shipping-mix-hint"
-                  />
-                </div>
-              </div>
-              {normalizationHint && (
-                <Badge
-                  id="shipping-mix-hint"
-                  variant={
-                    normalizationHint.includes('auto-normalized')
-                      ? 'default'
-                      : normalizationHint.includes('Warning')
-                        ? 'destructive'
-                        : 'secondary'
-                  }
-                  className="text-xs"
-                  aria-live="polite"
-                >
-                  {normalizationHint}
-                </Badge>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Percentages between 99.5% and 100.5% will be auto-normalized to total 100%
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button onClick={saveQuote} disabled={!calculation} className="flex-1">
-              <FloppyDisk size={16} className="mr-2" />
-              Save Quote
-            </Button>
-            <Button onClick={exportQuote} disabled={!calculation} variant="outline">
-              <Download size={16} className="mr-2" />
-              Export
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Results */}
-      {calculation && selectedRateCard && (
+    <div className="grid md:grid-cols-2 gap-8">
+      {/* Column 1: Inputs */}
+      <div className="space-y-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl" aria-live="polite" aria-label="Total monthly cost">
-              {formatCurrency(calculation.finalMonthlyCostCents)}
-              <span className="text-base font-normal text-muted-foreground ml-2">
-                / month
-              </span>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Using {selectedRateCard.name} {selectedRateCard.version}
-            </p>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calculator size={24} />
+              <CardTitle>Quote Calculator</CardTitle>
+            </div>
+            <Button variant="outline" onClick={() => setScopeInput(initialScope)}>
+              Reset
+            </Button>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Cost Breakdown Table */}
-            <Table>
-              <TableBody>
-                {calculation.lineItems.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{item.name}</TableCell>
-                    <TableCell className="text-right font-medium" aria-live="polite">
-                      {formatCurrency(item.costCents)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="border-t-2">
-                  <TableCell className="font-medium">Subtotal</TableCell>
-                  <TableCell className="text-right font-medium" aria-live="polite" aria-label="Subtotal cost">
-                    {formatCurrency(calculation.totalMonthlyCostCents)}
-                  </TableCell>
-                </TableRow>
-                {calculation.finalMonthlyCostCents > calculation.totalMonthlyCostCents && (
-                  <TableRow className="text-accent">
-                    <TableCell>Monthly Minimum Applied</TableCell>
-                    <TableCell className="text-right font-medium" aria-live="polite" aria-label="Monthly minimum adjustment">
-                      +{formatCurrency(calculation.finalMonthlyCostCents - calculation.totalMonthlyCostCents)}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-
-            {/* Per-Order Breakdown */}
-            <div className="bg-muted p-4 rounded-lg space-y-2">
-              <h4 className="font-medium">Per Order Costs</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="text-muted-foreground">Fulfillment</div>
-                  <div className="font-medium" aria-live="polite" aria-label="Fulfillment cost per order">
-                    {formatCurrency(calculation.breakdown.fulfillment.selectedBranchCents)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Shipping</div>
-                  <div className="font-medium" aria-live="polite" aria-label="Shipping cost per order">
-                    {formatCurrency(calculation.breakdown.shipping.blendedCostPerOrderCents)}
-                  </div>
-                </div>
-              </div>
+          <CardContent className="space-y-6">
+            {/* Client Info */}
+            <div className="space-y-2">
+              <Label htmlFor="client-name">Client Name (Optional)</Label>
+              <Input
+                id="client-name"
+                type="text"
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+                aria-label="Client Name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+              <p id="monthly-orders-hint">Number of orders expected per month</p>
+              <p id="units-per-order-hint">Average number of items per order</p>
+            </div>
+            {/* Order Value */}
+            <div className="space-y-2">
+              <Label htmlFor="order-value">Average Order Value ($)</Label>
+              <Input
+                id="order-value"
+                type="number"
+                step="0.01"
+                min="0"
+                value={scopeInput.averageOrderValue}
+                onChange={e => handleScopeChange('averageOrderValue', '', parseFloat(e.target.value) || 0)}
+                aria-describedby="order-value-hint"
+              />
+              <p id="order-value-hint" className="text-xs text-muted-foreground">
+                Total dollar value of typical customer order
+              </p>
+            </div>
+            {/* Shipping Model */}
+            <div className="space-y-2">
+              <Label htmlFor="shipping-model">Shipping Model</Label>
+              <Select
+                value={scopeInput.shippingModel}
+                onValueChange={value => handleScopeChange('shippingModel', '', value)}
+              >
+                <SelectTrigger id="shipping-model" aria-describedby="shipping-model-hint">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard Rates</SelectItem>
+                  <SelectItem value="customerAccount">Customer Account</SelectItem>
+                </SelectContent>
+              </Select>
+              <p id="shipping-model-hint" className="text-xs text-muted-foreground">
+                Choose between standard shipping rates or customer's own shipping account
+              </p>
             </div>
           </CardContent>
         </Card>
-      )}
+        {/* Storage Profile */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Storage Profile</CardTitle>
+            <CardDescription>Enter the average number of units in storage per month.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="small-units" className="text-sm">Small Units</Label>
+                <Input
+                  id="small-units"
+                  type="number"
+                  min="0"
+                  value={scopeInput.storageRequirements.smallUnits}
+                  onChange={e => handleScopeChange('storageRequirements', 'smallUnits', parseInt(e.target.value) || 0)}
+                  aria-describedby="small-units-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="medium-units" className="text-sm">Medium Units</Label>
+                <Input
+                  id="medium-units"
+                  type="number"
+                  min="0"
+                  value={scopeInput.storageRequirements.mediumUnits}
+                  onChange={e => handleScopeChange('storageRequirements', 'mediumUnits', parseInt(e.target.value) || 0)}
+                  aria-describedby="medium-units-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="large-units" className="text-sm">Large Units</Label>
+                <Input
+                  id="large-units"
+                  type="number"
+                  min="0"
+                  value={scopeInput.storageRequirements.largeUnits}
+                  onChange={e => handleScopeChange('storageRequirements', 'largeUnits', parseInt(e.target.value) || 0)}
+                  aria-describedby="large-units-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pallets" className="text-sm">Pallets</Label>
+                <Input
+                  id="pallets"
+                  type="number"
+                  min="0"
+                  value={scopeInput.storageRequirements.pallets}
+                  onChange={e => handleScopeChange('storageRequirements', 'pallets', parseInt(e.target.value) || 0)}
+                  aria-describedby="pallets-hint"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+              <p id="small-units-hint">Number of small units stored monthly</p>
+              <p id="medium-units-hint">Number of medium units stored monthly</p>
+              <p id="large-units-hint">Number of large units stored monthly</p>
+              <p id="pallets-hint">Number of pallets stored monthly</p>
+            </div>
+          </CardContent>
+        </Card>
+        {/* Shipping Profile */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Shipping Profile</CardTitle>
+            <CardDescription>Enter the percentage mix of package sizes for outgoing orders.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-2">
+              <Label>Shipping Size Mix (%)</Label>
+              <span
+                className={`text-sm font-medium ${Math.abs(shippingMixTotal - 100) < 0.1
+                  ? 'text-green-600'
+                  : shippingMixTotal >= 99.5 && shippingMixTotal <= 100.5
+                    ? 'text-amber-600'
+                    : 'text-red-600'
+                  }`}
+                aria-live="polite"
+                aria-label={`Shipping mix total: ${shippingMixTotal.toFixed(1)} percent`}
+              >
+                Total: {shippingMixTotal.toFixed(1)}%
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="small-mix" className="text-sm">Small (%)</Label>
+                <Input
+                  id="small-mix"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={scopeInput.shippingSizeMix.small}
+                  onChange={e => handleScopeChange('shippingSizeMix', 'small', parseFloat(e.target.value) || 0)}
+                  aria-describedby="shipping-mix-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="medium-mix" className="text-sm">Medium (%)</Label>
+                <Input
+                  id="medium-mix"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={scopeInput.shippingSizeMix.medium}
+                  onChange={e => handleScopeChange('shippingSizeMix', 'medium', parseFloat(e.target.value) || 0)}
+                  aria-describedby="shipping-mix-hint"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="large-mix" className="text-sm">Large (%)</Label>
+                <Input
+                  id="large-mix"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={scopeInput.shippingSizeMix.large}
+                  onChange={e => handleScopeChange('shippingSizeMix', 'large', parseFloat(e.target.value) || 0)}
+                  aria-describedby="shipping-mix-hint"
+                />
+              </div>
+            </div>
+            {normalizationHint && (
+              <Badge
+                id="shipping-mix-hint"
+                variant={
+                  normalizationHint.includes('auto-normalized')
+                    ? 'default'
+                    : normalizationHint.includes('Warning')
+                      ? 'destructive'
+                      : 'secondary'
+                }
+                className="text-xs"
+                aria-live="polite"
+              >
+                {normalizationHint}
+              </Badge>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Percentages between 99.5% and 100.5% will be auto-normalized to total 100%
+            </p>
+          </CardContent>
+        </Card>
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Button onClick={saveQuote} disabled={!calculation} className="flex-1">
+            <FloppyDisk size={16} className="mr-2" />
+            Save Quote
+          </Button>
+          <Button onClick={exportQuote} disabled={!calculation} variant="outline">
+            <Download size={16} className="mr-2" />
+            Export
+          </Button>
+        </div>
+      </div>
+      {/* Column 2: Results */}
+      <div>
+        {calculation && selectedRateCard && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl" aria-live="polite" aria-label="Total monthly cost">
+                {formatCurrency(calculation.finalMonthlyCostCents)}
+                <span className="text-base font-normal text-muted-foreground ml-2">
+                  / month
+                </span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Using {selectedRateCard.name} {selectedRateCard.version}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Cost Breakdown Table */}
+              <Table>
+                <TableBody>
+                  {calculation.lineItems.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell className="text-right font-medium" aria-live="polite">
+                        {formatCurrency(item.costCents)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="border-t-2">
+                    <TableCell className="font-medium">Subtotal</TableCell>
+                    <TableCell className="text-right font-medium" aria-live="polite" aria-label="Subtotal cost">
+                      {formatCurrency(calculation.totalMonthlyCostCents)}
+                    </TableCell>
+                  </TableRow>
+                  {calculation.finalMonthlyCostCents > calculation.totalMonthlyCostCents && (
+                    <TableRow className="text-accent">
+                      <TableCell>Monthly Minimum Applied</TableCell>
+                      <TableCell className="text-right font-medium" aria-live="polite" aria-label="Monthly minimum adjustment">
+                        +{formatCurrency(calculation.finalMonthlyCostCents - calculation.totalMonthlyCostCents)}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              {/* Per-Order Breakdown */}
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <h4 className="font-medium">Per Order Costs</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Fulfillment</div>
+                    <div className="font-medium" aria-live="polite" aria-label="Fulfillment cost per order">
+                      {formatCurrency(calculation.breakdown.fulfillment.selectedBranchCents)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Shipping</div>
+                    <div className="font-medium" aria-live="polite" aria-label="Shipping cost per order">
+                      {formatCurrency(calculation.breakdown.shipping.blendedCostPerOrderCents)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
