@@ -59,42 +59,30 @@ const DEFAULT_RATE_CARD: RateCardFormData = {
     }
 };
 
-export function RateCardManagement() {
-    const [rateCards, setRateCards] = useState<RateCard[]>([]);
+interface RateCardManagementProps {
+    rateCards: RateCard[];
+    loading: boolean;
+    onRateCardsChange: () => void;
+}
+
+export function RateCardManagement({ rateCards, loading, onRateCardsChange }: RateCardManagementProps) {
     const [selectedRateCard, setSelectedRateCard] = useState<RateCard | null>(null);
     const [formData, setFormData] = useState<RateCardFormData>(DEFAULT_RATE_CARD);
     const [versionNotes, setVersionNotes] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
     const [mode, setMode] = useState<'view' | 'create' | 'edit'>('view');
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-    // Fetch rate cards on component mount
-    useEffect(() => {
-        loadRateCards();
-    }, []);
-
-    const loadRateCards = async () => {
-        try {
-            setLoading(true);
-            const response = await fetchRateCards();
-            setRateCards(response.rateCards);
-        } catch (error) {
-            toast.error('Failed to load rate cards: ' + (error as Error).message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const loadRateCard = async (id: string) => {
         try {
-            setLoading(true);
+            setActionLoading(true);
             const response = await fetchRateCard(id);
             setSelectedRateCard(response.rateCard);
             setFormData(response.rateCard);
         } catch (error) {
             toast.error('Failed to load rate card: ' + (error as Error).message);
         } finally {
-            setLoading(false);
+            setActionLoading(false);
         }
     };
 
@@ -133,7 +121,7 @@ export function RateCardManagement() {
 
     const handleSubmit = async () => {
         try {
-            setLoading(true);
+            setActionLoading(true);
 
             if (mode === 'create') {
                 if (!formData.id || !formData.name) {
@@ -158,7 +146,7 @@ export function RateCardManagement() {
                 toast.success('Rate card updated successfully');
             }
 
-            await loadRateCards();
+            onRateCardsChange();
             setMode('view');
             setFormData(DEFAULT_RATE_CARD);
             setVersionNotes('');
@@ -166,16 +154,16 @@ export function RateCardManagement() {
         } catch (error) {
             toast.error('Failed to save rate card: ' + (error as Error).message);
         } finally {
-            setLoading(false);
+            setActionLoading(false);
         }
     };
 
     const handleDelete = async (id: string) => {
         try {
-            setLoading(true);
+            setActionLoading(true);
             await deleteRateCard(id);
             toast.success('Rate card deleted successfully');
-            await loadRateCards();
+            onRateCardsChange();
             setDeleteConfirmId(null);
             if (selectedRateCard?.id === id) {
                 setSelectedRateCard(null);
@@ -183,7 +171,7 @@ export function RateCardManagement() {
         } catch (error) {
             toast.error('Failed to delete rate card: ' + (error as Error).message);
         } finally {
-            setLoading(false);
+            setActionLoading(false);
         }
     };
 
@@ -237,7 +225,7 @@ export function RateCardManagement() {
                     </div>
                 </div>
 
-                <Button onClick={handleCreateNew} disabled={loading}>
+                <Button onClick={handleCreateNew} disabled={loading || actionLoading}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create New Rate Card
                 </Button>
@@ -349,7 +337,7 @@ export function RateCardManagement() {
                                                 <Button
                                                     variant="destructive"
                                                     onClick={() => handleDelete(selectedRateCard.id)}
-                                                    disabled={loading}
+                                                    disabled={actionLoading}
                                                 >
                                                     Delete
                                                 </Button>
@@ -361,11 +349,11 @@ export function RateCardManagement() {
 
                             {(mode === 'create' || mode === 'edit') && (
                                 <div className="flex gap-2">
-                                    <Button variant="outline" onClick={handleCancel} disabled={loading}>
+                                    <Button variant="outline" onClick={handleCancel} disabled={actionLoading}>
                                         <X className="h-4 w-4 mr-2" />
                                         Cancel
                                     </Button>
-                                    <Button onClick={handleSubmit} disabled={loading}>
+                                    <Button onClick={handleSubmit} disabled={actionLoading}>
                                         <Save className="h-4 w-4 mr-2" />
                                         {mode === 'create' ? 'Create' : 'Update'}
                                     </Button>
@@ -400,7 +388,7 @@ export function RateCardManagement() {
                                                 value={formData.id}
                                                 onChange={(e) => updateFormField('id', e.target.value)}
                                                 placeholder="e.g., rc-enterprise-2025"
-                                                disabled={mode === 'edit' || loading}
+                                                disabled={mode === 'edit' || actionLoading}
                                             />
                                         </div>
                                         <div>
@@ -410,7 +398,7 @@ export function RateCardManagement() {
                                                 value={formData.name}
                                                 onChange={(e) => updateFormField('name', e.target.value)}
                                                 placeholder="e.g., Enterprise Plan 2025"
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                         <div>
@@ -420,7 +408,7 @@ export function RateCardManagement() {
                                                 value={formData.version}
                                                 onChange={(e) => updateFormField('version', e.target.value)}
                                                 placeholder="e.g., v1.0.0"
-                                                disabled={mode === 'edit' || mode === 'view' || loading}
+                                                disabled={mode === 'edit' || mode === 'view' || actionLoading}
                                             />
                                             {mode === 'edit' && (
                                                 <p className="text-xs text-muted-foreground mt-1">
@@ -436,7 +424,7 @@ export function RateCardManagement() {
                                                 value={formData.monthly_minimum_cents / 100}
                                                 onChange={(e) => updateFormField('monthly_minimum_cents', Math.round(Number(e.target.value) * 100))}
                                                 placeholder="0"
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                     </div>
@@ -450,7 +438,7 @@ export function RateCardManagement() {
                                                 onChange={(e) => setVersionNotes(e.target.value)}
                                                 placeholder={mode === 'create' ? 'Initial version' : 'Describe the changes made in this update...'}
                                                 rows={3}
-                                                disabled={loading}
+                                                disabled={actionLoading}
                                             />
                                             {mode === 'edit' && (
                                                 <p className="text-xs text-muted-foreground mt-1">
@@ -471,7 +459,7 @@ export function RateCardManagement() {
                                                 step="0.1"
                                                 value={formData.prices.fulfillment.aovPercentage * 100}
                                                 onChange={(e) => updateFormField('prices.fulfillment.aovPercentage', Number(e.target.value) / 100)}
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                         <div>
@@ -482,7 +470,7 @@ export function RateCardManagement() {
                                                 step="0.01"
                                                 value={formData.prices.fulfillment.baseFeeCents / 100}
                                                 onChange={(e) => updateFormField('prices.fulfillment.baseFeeCents', Math.round(Number(e.target.value) * 100))}
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                         <div>
@@ -493,7 +481,7 @@ export function RateCardManagement() {
                                                 step="0.01"
                                                 value={formData.prices.fulfillment.perAdditionalUnitCents / 100}
                                                 onChange={(e) => updateFormField('prices.fulfillment.perAdditionalUnitCents', Math.round(Number(e.target.value) * 100))}
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                     </div>
@@ -509,7 +497,7 @@ export function RateCardManagement() {
                                                 step="0.01"
                                                 value={formData.prices.storage.smallUnitCents / 100}
                                                 onChange={(e) => updateFormField('prices.storage.smallUnitCents', Math.round(Number(e.target.value) * 100))}
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                         <div>
@@ -520,7 +508,7 @@ export function RateCardManagement() {
                                                 step="0.01"
                                                 value={formData.prices.storage.mediumUnitCents / 100}
                                                 onChange={(e) => updateFormField('prices.storage.mediumUnitCents', Math.round(Number(e.target.value) * 100))}
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                         <div>
@@ -531,7 +519,7 @@ export function RateCardManagement() {
                                                 step="0.01"
                                                 value={formData.prices.storage.largeUnitCents / 100}
                                                 onChange={(e) => updateFormField('prices.storage.largeUnitCents', Math.round(Number(e.target.value) * 100))}
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                         <div>
@@ -542,7 +530,7 @@ export function RateCardManagement() {
                                                 step="0.01"
                                                 value={formData.prices.storage.palletCents / 100}
                                                 onChange={(e) => updateFormField('prices.storage.palletCents', Math.round(Number(e.target.value) * 100))}
-                                                disabled={mode === 'view' || loading}
+                                                disabled={mode === 'view' || actionLoading}
                                             />
                                         </div>
                                     </div>
@@ -560,7 +548,7 @@ export function RateCardManagement() {
                                                     step="0.01"
                                                     value={formData.prices.shippingAndHandling.standard.smallPackageCents / 100}
                                                     onChange={(e) => updateFormField('prices.shippingAndHandling.standard.smallPackageCents', Math.round(Number(e.target.value) * 100))}
-                                                    disabled={mode === 'view' || loading}
+                                                    disabled={mode === 'view' || actionLoading}
                                                 />
                                             </div>
                                             <div>
@@ -571,7 +559,7 @@ export function RateCardManagement() {
                                                     step="0.01"
                                                     value={formData.prices.shippingAndHandling.standard.mediumPackageCents / 100}
                                                     onChange={(e) => updateFormField('prices.shippingAndHandling.standard.mediumPackageCents', Math.round(Number(e.target.value) * 100))}
-                                                    disabled={mode === 'view' || loading}
+                                                    disabled={mode === 'view' || actionLoading}
                                                 />
                                             </div>
                                             <div>
@@ -582,7 +570,7 @@ export function RateCardManagement() {
                                                     step="0.01"
                                                     value={formData.prices.shippingAndHandling.standard.largePackageCents / 100}
                                                     onChange={(e) => updateFormField('prices.shippingAndHandling.standard.largePackageCents', Math.round(Number(e.target.value) * 100))}
-                                                    disabled={mode === 'view' || loading}
+                                                    disabled={mode === 'view' || actionLoading}
                                                 />
                                             </div>
                                         </div>
@@ -601,7 +589,7 @@ export function RateCardManagement() {
                                                     step="0.01"
                                                     value={formData.prices.shippingAndHandling.customerAccount.smallPackageCents / 100}
                                                     onChange={(e) => updateFormField('prices.shippingAndHandling.customerAccount.smallPackageCents', Math.round(Number(e.target.value) * 100))}
-                                                    disabled={mode === 'view' || loading}
+                                                    disabled={mode === 'view' || actionLoading}
                                                 />
                                             </div>
                                             <div>
@@ -612,7 +600,7 @@ export function RateCardManagement() {
                                                     step="0.01"
                                                     value={formData.prices.shippingAndHandling.customerAccount.mediumPackageCents / 100}
                                                     onChange={(e) => updateFormField('prices.shippingAndHandling.customerAccount.mediumPackageCents', Math.round(Number(e.target.value) * 100))}
-                                                    disabled={mode === 'view' || loading}
+                                                    disabled={mode === 'view' || actionLoading}
                                                 />
                                             </div>
                                             <div>
@@ -623,7 +611,7 @@ export function RateCardManagement() {
                                                     step="0.01"
                                                     value={formData.prices.shippingAndHandling.customerAccount.largePackageCents / 100}
                                                     onChange={(e) => updateFormField('prices.shippingAndHandling.customerAccount.largePackageCents', Math.round(Number(e.target.value) * 100))}
-                                                    disabled={mode === 'view' || loading}
+                                                    disabled={mode === 'view' || actionLoading}
                                                 />
                                             </div>
                                         </div>

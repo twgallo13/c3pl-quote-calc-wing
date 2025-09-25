@@ -15,6 +15,11 @@ import { fetchQuotePreview, QuoteBreakdown as ApiQuoteBreakdown } from '@/lib/ap
 import { QuoteCalculation, ScopeInput, RateCard } from '@/lib/types';
 import { APP_VERSION } from '@momentum/version';
 
+interface ClientHarmonizationToolProps {
+    rateCards: RateCard[];
+    loading: boolean;
+}
+
 interface DiscountSettings {
     global: number;
     fulfillment: number;
@@ -37,50 +42,7 @@ interface DiscountWarning {
     threshold: number;
 }
 
-const SAMPLE_RATE_CARDS: RateCard[] = [
-    {
-        id: "rc-startup-2025",
-        name: "Startup Plan 2025",
-        version: "v1.0.0",
-        monthly_minimum_cents: 150000,
-        prices: {
-            fulfillment: { aovPercentage: 0.05, baseFeeCents: 275, perAdditionalUnitCents: 95 },
-            storage: { smallUnitCents: 80, mediumUnitCents: 160, largeUnitCents: 275, palletCents: 8500 },
-            shippingAndHandling: {
-                standard: { smallPackageCents: 325, mediumPackageCents: 650, largePackageCents: 1250 },
-                customerAccount: { smallPackageCents: 100, mediumPackageCents: 150, largePackageCents: 275 }
-            }
-        }
-    },
-    {
-        id: "rc-growth-2025",
-        name: "Growth Plan 2025",
-        version: "v1.0.0",
-        monthly_minimum_cents: 300000,
-        prices: {
-            fulfillment: { aovPercentage: 0.05, baseFeeCents: 250, perAdditionalUnitCents: 75 },
-            storage: { smallUnitCents: 75, mediumUnitCents: 150, largeUnitCents: 250, palletCents: 7500 },
-            shippingAndHandling: {
-                standard: { smallPackageCents: 300, mediumPackageCents: 600, largePackageCents: 1200 },
-                customerAccount: { smallPackageCents: 75, mediumPackageCents: 125, largePackageCents: 250 }
-            }
-        }
-    },
-    {
-        id: "rc-enterprise-2025",
-        name: "Enterprise Plan 2025",
-        version: "v1.0.0",
-        monthly_minimum_cents: 750000,
-        prices: {
-            fulfillment: { aovPercentage: 0.04, baseFeeCents: 200, perAdditionalUnitCents: 50 },
-            storage: { smallUnitCents: 60, mediumUnitCents: 120, largeUnitCents: 200, palletCents: 6000 },
-            shippingAndHandling: {
-                standard: { smallPackageCents: 285, mediumPackageCents: 585, largePackageCents: 1185 },
-                customerAccount: { smallPackageCents: 50, mediumPackageCents: 100, largePackageCents: 225 }
-            }
-        }
-    }
-];
+
 
 const DEFAULT_SCOPE: ScopeInput = {
     monthlyOrders: 1000,
@@ -97,7 +59,7 @@ const DEFAULT_DISCOUNT_SETTINGS: DiscountSettings = {
     shippingAndHandling: 30
 };
 
-export function ClientHarmonizationTool() {
+export function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizationToolProps) {
     const [sourceRateCard, setSourceRateCard] = useState<string>('');
     const [targetRateCard, setTargetRateCard] = useState<string>('');
     const [scope, setScope] = useState<ScopeInput>(DEFAULT_SCOPE);
@@ -107,12 +69,12 @@ export function ClientHarmonizationTool() {
     const [targetQuote, setTargetQuote] = useState<QuoteBreakdown | null>(null);
     const [harmonizedQuote, setHarmonizedQuote] = useState<QuoteBreakdown | null>(null);
     const [harmonizedRateCard, setHarmonizedRateCard] = useState<RateCard | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
     const [clientName, setClientName] = useState('');
     const [notes, setNotes] = useState('');
 
-    const sourceCard = SAMPLE_RATE_CARDS.find(card => card.id === sourceRateCard);
-    const targetCard = SAMPLE_RATE_CARDS.find(card => card.id === targetRateCard);
+    const sourceCard = rateCards.find(card => card.id === sourceRateCard);
+    const targetCard = rateCards.find(card => card.id === targetRateCard);
 
     // Calculate quotes when rate cards or scope changes
     useEffect(() => {
@@ -129,7 +91,7 @@ export function ClientHarmonizationTool() {
 
     const calculateQuote = async (rateCardId: string, setQuote: (quote: QuoteBreakdown) => void) => {
         try {
-            setLoading(true);
+            setActionLoading(true);
             const result = await fetchQuotePreview(scope, rateCardId);
 
             // Convert API response to our expected format
@@ -145,7 +107,7 @@ export function ClientHarmonizationTool() {
         } catch (error) {
             console.error('Failed to calculate quote:', error);
         } finally {
-            setLoading(false);
+            setActionLoading(false);
         }
     };
 
@@ -277,6 +239,18 @@ export function ClientHarmonizationTool() {
         return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
     };
 
+    // Show loading state while rate cards are being fetched
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="text-center space-y-4">
+                    <ArrowLeftRight className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
+                    <p className="text-muted-foreground">Loading rate cards...</p>
+                </div>
+            </div>
+        );
+    }
+
     const downloadHarmonizationReport = () => {
         if (!harmonizedRateCard || !sourceQuote || !targetQuote || !harmonizedQuote) return;
 
@@ -302,6 +276,163 @@ export function ClientHarmonizationTool() {
         const a = document.createElement('a');
         a.href = url;
         a.download = `harmonization-report-${clientName || 'client'}-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    const exportHarmonizationSummary = () => {
+        if (!sourceCard || !targetCard || !sourceQuote || !targetQuote || !discountAnalysis) return;
+
+        const currentDate = new Date().toLocaleDateString();
+        const currentTime = new Date().toLocaleTimeString();
+        
+        const htmlReport = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Client Harmonization Summary Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #007bff; padding-bottom: 20px; }
+        .section { margin: 20px 0; }
+        .section-title { color: #007bff; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .comparison-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .comparison-table th, .comparison-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        .comparison-table th { background-color: #f8f9fa; font-weight: bold; }
+        .warning { color: #dc3545; font-weight: bold; }
+        .success { color: #28a745; }
+        .info-box { background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 15px 0; }
+        .discount-high { background-color: #fff3cd; border-left: 4px solid #ffc107; }
+        .discount-critical { background-color: #f8d7da; border-left: 4px solid #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Client Harmonization Summary Report</h1>
+        <p><strong>Client:</strong> ${clientName || 'Unnamed Client'} | <strong>Generated:</strong> ${currentDate} at ${currentTime}</p>
+        <p><strong>App Version:</strong> ${APP_VERSION}</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Rate Card Comparison</div>
+        <table class="comparison-table">
+            <tr>
+                <th>Attribute</th>
+                <th>Source Rate Card</th>
+                <th>Target Rate Card</th>
+                <th>Discount %</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td><strong>Rate Card Name</strong></td>
+                <td>${sourceCard.name} (${sourceCard.version})</td>
+                <td>${targetCard.name} (${targetCard.version})</td>
+                <td>-</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td><strong>Fulfillment Cost</strong></td>
+                <td>${formatCurrency(sourceQuote.fulfillmentCostCents)}</td>
+                <td>${formatCurrency(targetQuote.fulfillmentCostCents)}</td>
+                <td>${formatPercentage(discountAnalysis.fulfillment)}</td>
+                <td class="${Math.abs(discountAnalysis.fulfillment) > discountSettings.fulfillment ? 'warning' : 'success'}">
+                    ${Math.abs(discountAnalysis.fulfillment) > discountSettings.fulfillment ? '⚠️ Above Threshold' : '✅ Within Limits'}
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Storage Cost</strong></td>
+                <td>${formatCurrency(sourceQuote.storageCostCents)}</td>
+                <td>${formatCurrency(targetQuote.storageCostCents)}</td>
+                <td>${formatPercentage(discountAnalysis.storage)}</td>
+                <td class="${Math.abs(discountAnalysis.storage) > discountSettings.storage ? 'warning' : 'success'}">
+                    ${Math.abs(discountAnalysis.storage) > discountSettings.storage ? '⚠️ Above Threshold' : '✅ Within Limits'}
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Shipping & Handling</strong></td>
+                <td>${formatCurrency(sourceQuote.shippingAndHandlingCostCents)}</td>
+                <td>${formatCurrency(targetQuote.shippingAndHandlingCostCents)}</td>
+                <td>${formatPercentage(discountAnalysis.shippingAndHandling)}</td>
+                <td class="${Math.abs(discountAnalysis.shippingAndHandling) > discountSettings.shippingAndHandling ? 'warning' : 'success'}">
+                    ${Math.abs(discountAnalysis.shippingAndHandling) > discountSettings.shippingAndHandling ? '⚠️ Above Threshold' : '✅ Within Limits'}
+                </td>
+            </tr>
+            <tr style="font-weight: bold; background-color: #f8f9fa;">
+                <td><strong>Total Monthly Cost</strong></td>
+                <td>${formatCurrency(sourceQuote.totalMonthlyCostCents)}</td>
+                <td>${formatCurrency(targetQuote.totalMonthlyCostCents)}</td>
+                <td>${formatPercentage(discountAnalysis.total)}</td>
+                <td class="${Math.abs(discountAnalysis.total) > discountSettings.global ? 'warning' : 'success'}">
+                    ${Math.abs(discountAnalysis.total) > discountSettings.global ? '⚠️ Above Threshold' : '✅ Within Limits'}
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Client Scope Parameters</div>
+        <div class="info-box">
+            <p><strong>Monthly Orders:</strong> ${scope.monthlyOrders.toLocaleString()}</p>
+            <p><strong>Average Units per Order:</strong> ${scope.averageUnitsPerOrder}</p>
+            <p><strong>Average Order Value:</strong> $${scope.averageOrderValue}</p>
+            <p><strong>Shipping Model:</strong> ${scope.shippingModel}</p>
+            <p><strong>Shipping Size Mix:</strong> Small: ${scope.shippingSizeMix.small}%, Medium: ${scope.shippingSizeMix.medium}%, Large: ${scope.shippingSizeMix.large}%</p>
+        </div>
+    </div>
+
+    ${warnings.length > 0 ? `
+    <div class="section">
+        <div class="section-title">⚠️ High Discount Warnings</div>
+        ${warnings.map(warning => `
+        <div class="${Math.abs(warning.discount) > warning.threshold * 1.5 ? 'info-box discount-critical' : 'info-box discount-high'}">
+            <strong>${warning.category}:</strong> ${formatPercentage(warning.discount)} discount exceeds threshold of ${warning.threshold}%
+        </div>
+        `).join('')}
+    </div>
+    ` : ''}
+
+    <div class="section">
+        <div class="section-title">Applied Custom Discounts</div>
+        <div class="info-box">
+            <p><strong>Fulfillment Discount:</strong> ${customDiscounts.fulfillment || 0}%</p>
+            <p><strong>Storage Discount:</strong> ${customDiscounts.storage || 0}%</p>
+            <p><strong>Shipping & Handling Discount:</strong> ${customDiscounts.shippingAndHandling || 0}%</p>
+            <p><strong>Global Discount:</strong> ${customDiscounts.global || 0}%</p>
+        </div>
+    </div>
+
+    ${notes ? `
+    <div class="section">
+        <div class="section-title">Migration Notes</div>
+        <div class="info-box">
+            <p>${notes}</p>
+        </div>
+    </div>
+    ` : ''}
+
+    <div class="section">
+        <div class="section-title">Discount Threshold Configuration</div>
+        <div class="info-box">
+            <p><strong>Global Warning Threshold:</strong> ${discountSettings.global}%</p>
+            <p><strong>Fulfillment Warning Threshold:</strong> ${discountSettings.fulfillment}%</p>
+            <p><strong>Storage Warning Threshold:</strong> ${discountSettings.storage}%</p>
+            <p><strong>Shipping & Handling Warning Threshold:</strong> ${discountSettings.shippingAndHandling}%</p>
+        </div>
+    </div>
+
+    <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666;">
+        <p>Generated by C3PL Quote Calculator ${APP_VERSION} on ${currentDate} at ${currentTime}</p>
+    </footer>
+</body>
+</html>`;
+
+        const blob = new Blob([htmlReport], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `harmonization-summary-${clientName || 'client'}-${Date.now()}.html`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -445,7 +576,7 @@ export function ClientHarmonizationTool() {
                                         <SelectValue placeholder="Select source rate card" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {SAMPLE_RATE_CARDS.map((card) => (
+                                        {rateCards.map((card) => (
                                             <SelectItem key={card.id} value={card.id}>
                                                 {card.name} ({card.version})
                                             </SelectItem>
@@ -469,7 +600,7 @@ export function ClientHarmonizationTool() {
                                         <SelectValue placeholder="Select target rate card" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {SAMPLE_RATE_CARDS.map((card) => (
+                                        {rateCards.map((card) => (
                                             <SelectItem key={card.id} value={card.id}>
                                                 {card.name} ({card.version})
                                             </SelectItem>
@@ -587,6 +718,22 @@ export function ClientHarmonizationTool() {
                         </CardContent>
                     </Card>
 
+                    {/* Export Summary Button for Comparison */}
+                    {sourceQuote && targetQuote && discountAnalysis && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Export Comparison Report</CardTitle>
+                                <CardDescription>Generate a summary report of the rate card comparison and discount analysis</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button onClick={exportHarmonizationSummary} className="w-full">
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Export Summary Report (HTML)
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Cost Comparison */}
                     {sourceQuote && targetQuote && discountAnalysis && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -626,36 +773,48 @@ export function ClientHarmonizationTool() {
                                         <span>Fulfillment:</span>
                                         <div className="text-right">
                                             <span>{formatCurrency(targetQuote.fulfillmentCostCents)}</span>
-                                            <Badge
-                                                variant={Math.abs(discountAnalysis.fulfillment) > discountSettings.fulfillment ? "destructive" : "secondary"}
-                                                className="ml-2"
-                                            >
-                                                {formatPercentage(discountAnalysis.fulfillment)}
-                                            </Badge>
+                                            <div className="flex items-center gap-1 ml-2">
+                                                {Math.abs(discountAnalysis.fulfillment) > discountSettings.fulfillment && (
+                                                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                                                )}
+                                                <Badge
+                                                    variant={Math.abs(discountAnalysis.fulfillment) > discountSettings.fulfillment ? "destructive" : "secondary"}
+                                                >
+                                                    {formatPercentage(discountAnalysis.fulfillment)}
+                                                </Badge>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Storage:</span>
                                         <div className="text-right">
                                             <span>{formatCurrency(targetQuote.storageCostCents)}</span>
-                                            <Badge
-                                                variant={Math.abs(discountAnalysis.storage) > discountSettings.storage ? "destructive" : "secondary"}
-                                                className="ml-2"
-                                            >
-                                                {formatPercentage(discountAnalysis.storage)}
-                                            </Badge>
+                                            <div className="flex items-center gap-1 ml-2">
+                                                {Math.abs(discountAnalysis.storage) > discountSettings.storage && (
+                                                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                                                )}
+                                                <Badge
+                                                    variant={Math.abs(discountAnalysis.storage) > discountSettings.storage ? "destructive" : "secondary"}
+                                                >
+                                                    {formatPercentage(discountAnalysis.storage)}
+                                                </Badge>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Shipping & Handling:</span>
                                         <div className="text-right">
                                             <span>{formatCurrency(targetQuote.shippingAndHandlingCostCents)}</span>
-                                            <Badge
-                                                variant={Math.abs(discountAnalysis.shippingAndHandling) > discountSettings.shippingAndHandling ? "destructive" : "secondary"}
-                                                className="ml-2"
-                                            >
-                                                {formatPercentage(discountAnalysis.shippingAndHandling)}
-                                            </Badge>
+                                            <div className="flex items-center gap-1 ml-2">
+                                                {Math.abs(discountAnalysis.shippingAndHandling) > discountSettings.shippingAndHandling && (
+                                                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                                                )}
+                                                <Badge
+                                                    variant={Math.abs(discountAnalysis.shippingAndHandling) > discountSettings.shippingAndHandling ? "destructive" : "secondary"}
+                                                >
+                                                    {formatPercentage(discountAnalysis.shippingAndHandling)}
+                                                </Badge>
+                                            </div>
                                         </div>
                                     </div>
                                     <Separator />
@@ -663,12 +822,16 @@ export function ClientHarmonizationTool() {
                                         <span>Total Monthly Cost:</span>
                                         <div className="text-right">
                                             <span>{formatCurrency(targetQuote.totalMonthlyCostCents)}</span>
-                                            <Badge
-                                                variant={Math.abs(discountAnalysis.total) > discountSettings.global ? "destructive" : "secondary"}
-                                                className="ml-2"
-                                            >
-                                                {formatPercentage(discountAnalysis.total)}
-                                            </Badge>
+                                            <div className="flex items-center gap-1 ml-2">
+                                                {Math.abs(discountAnalysis.total) > discountSettings.global && (
+                                                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                                                )}
+                                                <Badge
+                                                    variant={Math.abs(discountAnalysis.total) > discountSettings.global ? "destructive" : "secondary"}
+                                                >
+                                                    {formatPercentage(discountAnalysis.total)}
+                                                </Badge>
+                                            </div>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -807,10 +970,16 @@ export function ClientHarmonizationTool() {
                                                 rate card comparisons, and harmonization decisions.
                                             </p>
                                         </div>
-                                        <Button onClick={downloadHarmonizationReport}>
-                                            <Download className="h-4 w-4 mr-2" />
-                                            Download Report (JSON)
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button onClick={exportHarmonizationSummary} variant="default">
+                                                <Download className="h-4 w-4 mr-2" />
+                                                Export Summary (HTML)
+                                            </Button>
+                                            <Button onClick={downloadHarmonizationReport} variant="outline">
+                                                <Download className="h-4 w-4 mr-2" />
+                                                Download Report (JSON)
+                                            </Button>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

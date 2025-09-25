@@ -10,20 +10,20 @@ import { Calculator, FloppyDisk, Download } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { RateCard, ScopeInput, QuoteCalculation, Quote } from '@/lib/types';
 import { calculateQuote, formatCurrency, formatPercentage, normalizeShippingSizeMix } from '@/lib/calculator';
-import { sampleRateCards } from '@/lib/sampleData';
 
 interface QuoteCalculatorProps {
   onQuoteCalculated?: (quote: Quote) => void;
+  rateCards: RateCard[];
+  loading: boolean;
 }
 
-export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorProps) {
-  const [rateCards] = useKV<RateCard[]>('rate-cards', sampleRateCards);
+export default function QuoteCalculator({ onQuoteCalculated, rateCards, loading }: QuoteCalculatorProps) {
   const [, setQuotesKV] = useKV<Quote[]>('quotes', []);
-  
+
   const setQuotes = (updater: (current: Quote[]) => Quote[]) => {
     setQuotesKV(current => updater(current || []));
   };
-  
+
   const [selectedRateCardId, setSelectedRateCardId] = useState<string>('rc-growth-2025');
   const [clientName, setClientName] = useState('');
   const [scopeInput, setScopeInput] = useState<ScopeInput>({
@@ -33,7 +33,7 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
     shippingModel: 'standard',
     shippingSizeMix: { small: 60, medium: 30, large: 10 }
   });
-  
+
   const [calculation, setCalculation] = useState<QuoteCalculation | null>(null);
   const [normalizationHint, setNormalizationHint] = useState<string>('');
 
@@ -42,7 +42,7 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
   // Recalculate whenever inputs change
   useEffect(() => {
     if (!selectedRateCard) return;
-    
+
     // Check shipping mix normalization
     const normalized = normalizeShippingSizeMix(scopeInput.shippingSizeMix);
     if (normalized.wasNormalized) {
@@ -50,7 +50,7 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
     } else {
       setNormalizationHint('');
     }
-    
+
     const result = calculateQuote(selectedRateCard, scopeInput);
     setCalculation(result);
   }, [selectedRateCard, scopeInput]);
@@ -70,7 +70,7 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
 
   const saveQuote = () => {
     if (!calculation || !selectedRateCard) return;
-    
+
     const quote: Quote = {
       id: Date.now().toString(),
       clientName: clientName || undefined,
@@ -80,7 +80,7 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
       scopeInput,
       calculation
     };
-    
+
     setQuotes(current => [quote, ...current]);
     onQuoteCalculated?.(quote);
     toast.success('Quote saved successfully');
@@ -88,7 +88,7 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
 
   const exportQuote = () => {
     if (!calculation || !selectedRateCard) return;
-    
+
     const quoteData = {
       client: clientName || 'Prospect',
       rateCard: `${selectedRateCard.name} ${selectedRateCard.version}`,
@@ -97,7 +97,7 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
       calculation,
       total: formatCurrency(calculation.finalMonthlyCostCents)
     };
-    
+
     const blob = new Blob([JSON.stringify(quoteData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -105,11 +105,11 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
     a.download = `quote-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    
+
     toast.success('Quote exported');
   };
 
-  if (!rateCards) {
+  if (loading || !rateCards) {
     return <div>Loading...</div>;
   }
 
@@ -190,8 +190,8 @@ export default function QuoteCalculator({ onQuoteCalculated }: QuoteCalculatorPr
           {/* Shipping Model */}
           <div className="space-y-2">
             <Label>Shipping Model</Label>
-            <Select 
-              value={scopeInput.shippingModel} 
+            <Select
+              value={scopeInput.shippingModel}
               onValueChange={(value: 'standard' | 'customerAccount') => updateScopeInput({ shippingModel: value })}
             >
               <SelectTrigger>

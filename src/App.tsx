@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, ClockCounterClockwise, TestTube, ArrowsLeftRight, Shield } from '@phosphor-icons/react';
@@ -7,11 +7,39 @@ import QuoteHistory from './components/QuoteHistory';
 import { ClientHarmonizationTool } from './components/ClientHarmonizationTool';
 import { RateCardManagement } from './components/RateCardManagement';
 import QuotePage from './pages/quote';
-import type { Quote } from './lib/types';
+import type { Quote, RateCard } from './lib/types';
+import { fetchRateCards } from './lib/api';
+import { toast } from 'sonner';
 import { APP_VERSION } from '@momentum/version';
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>('calculator');
+  const [rateCards, setRateCards] = useState<RateCard[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Centralized rate card state management
+  useEffect(() => {
+    loadRateCards();
+  }, []);
+
+  const loadRateCards = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchRateCards();
+      setRateCards(response.rateCards);
+    } catch (error) {
+      toast.error('Failed to load rate cards: ' + (error as Error).message);
+      // Fallback to empty array to prevent app crashes
+      setRateCards([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Callback to refresh rate cards after changes
+  const handleRateCardsChange = () => {
+    loadRateCards();
+  };
 
   const handleQuoteCalculated = (quote: Quote) => {
     // Switch to history tab to show the saved quote
@@ -57,7 +85,11 @@ function App() {
           </TabsList>
 
           <TabsContent value="calculator">
-            <QuoteCalculator onQuoteCalculated={handleQuoteCalculated} />
+            <QuoteCalculator
+              onQuoteCalculated={handleQuoteCalculated}
+              rateCards={rateCards}
+              loading={loading}
+            />
           </TabsContent>
 
           <TabsContent value="history">
@@ -65,11 +97,18 @@ function App() {
           </TabsContent>
 
           <TabsContent value="harmonization">
-            <ClientHarmonizationTool />
+            <ClientHarmonizationTool
+              rateCards={rateCards}
+              loading={loading}
+            />
           </TabsContent>
 
           <TabsContent value="ratecards">
-            <RateCardManagement />
+            <RateCardManagement
+              rateCards={rateCards}
+              loading={loading}
+              onRateCardsChange={handleRateCardsChange}
+            />
           </TabsContent>
 
           <TabsContent value="quote">
