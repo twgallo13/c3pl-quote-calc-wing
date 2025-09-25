@@ -50,6 +50,10 @@ function ToggleGroupItem({
   VariantProps<typeof toggleVariants>) {
   const context = useContext(ToggleGroupContext)
 
+  if (!context) {
+    throw new Error("ToggleGroupItem must be used within a <ToggleGroup />")
+  }
+
   return (
     <ToggleGroupPrimitive.Item
       data-slot="toggle-group-item"
