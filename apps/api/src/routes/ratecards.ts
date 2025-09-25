@@ -49,7 +49,7 @@ const UpdateRateCardSchema = z.object({
     versionNotes: z.string().min(1)
 });
 
-// GET /api/ratecards - List all rate cards
+// GET /api/rate-cards - List all rate cards
 r.get('/', async (req: Request, res: Response) => {
     try {
         const rateCards = await prisma.rateCard.findMany({
@@ -63,7 +63,7 @@ r.get('/', async (req: Request, res: Response) => {
     }
 });
 
-// GET /api/ratecards/:id - Get specific rate card
+// GET /api/rate-cards/:id - Get specific rate card
 r.get('/:id', async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -82,7 +82,7 @@ r.get('/:id', async (req: Request, res: Response) => {
     }
 });
 
-// POST /api/ratecards - Create new rate card
+// POST /api/rate-cards - Create new rate card
 r.post('/', async (req: Request, res: Response) => {
     try {
         const parsed = CreateRateCardSchema.safeParse(req.body);
@@ -119,7 +119,7 @@ r.post('/', async (req: Request, res: Response) => {
     }
 });
 
-// PUT /api/ratecards/:id - Update rate card
+// PUT /api/rate-cards/:id - Update rate card
 r.put('/:id', async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -167,7 +167,7 @@ r.put('/:id', async (req: Request, res: Response) => {
     }
 });
 
-// DELETE /api/ratecards/:id - Delete rate card
+// DELETE /api/rate-cards/:id - Delete rate card
 r.delete('/:id', async (req: Request, res: Response) => {
     try {
         const { id } = req.params;

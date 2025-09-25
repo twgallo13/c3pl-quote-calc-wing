@@ -30,6 +30,8 @@ import { toast } from 'sonner';
 import type { RateCard, ScopeInput, QuoteCalculation, Quote } from '@/lib/types';
 import { calculateQuote, formatCurrency, formatPercentage, normalizeShippingSizeMix } from '@/lib/calculator';
 import { useRateCards } from '@/hooks/useRateCards';
+import { parsePct, countsToPercents, normalizePercentsTo100 } from '@/lib/percent';
+import { toNumber } from '@/lib/num';
 
 // Alias for ScenarioResult to match requested naming
 type ScenarioResult = QuoteCalculation;
@@ -39,19 +41,41 @@ const calculateScenario = calculateQuote;
 export default function QuoteCalculator({ onQuoteCalculated }: {
   onQuoteCalculated?: (quote: Quote) => void;
 }) {
-  // Use the rate cards hook
-  const { data: rateCards, loading, error } = useRateCards();
 
-  // State hooks as requested
-  const [scope, setScope] = useState<ScopeInput>(initialScope);
+  // Reset handler to clear all fields
+  const handleReset = () => {
+    setMonthlyOrders('');
+    setAvgUnitsPerOrder('');
+    setAvgOrderValue('');
+    setSmallUnits('');
+    setMediumUnits('');
+    setLargeUnits('');
+    setPallets('');
+    setSmallPct('');
+    setMediumPct('');
+    setLargePct('');
+    setClientName('');
+  };
+  // Shipping Size Mix as raw strings for user control
+  const [smallPct, setSmallPct] = useState<string>('');
+  const [mediumPct, setMediumPct] = useState<string>('');
+  const [largePct, setLargePct] = useState<string>('');
+  // Numeric fields as raw strings
+  const [monthlyOrders, setMonthlyOrders] = useState<string>('');
+  const [avgUnitsPerOrder, setAvgUnitsPerOrder] = useState<string>('');
+  const [avgOrderValue, setAvgOrderValue] = useState<string>('');
+  const [smallUnits, setSmallUnits] = useState<string>('');
+  const [mediumUnits, setMediumUnits] = useState<string>('');
+  const [largeUnits, setLargeUnits] = useState<string>('');
+  const [pallets, setPallets] = useState<string>('');
+  // Other state
   const [selectedRateCard, setSelectedRateCard] = useState<RateCard | null>(null);
   const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(null);
-
-  // Additional state for UI functionality
   const [normalizationHint, setNormalizationHint] = useState<string>('');
   const [shippingMixTotal, setShippingMixTotal] = useState<number>(100);
   const [clientName, setClientName] = useState<string>('');
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const { data: rateCards, loading, error } = useRateCards();
 
   // Initialize selected rate card when data loads
   useEffect(() => {
@@ -61,54 +85,71 @@ export default function QuoteCalculator({ onQuoteCalculated }: {
   }, [rateCards, selectedRateCard]);
 
   // Calculation effect - recalculate whenever scope or selectedRateCard changes
+  // Calculate live total from raw percent strings
+  const liveTotal = parsePct(smallPct) + parsePct(mediumPct) + parsePct(largePct);
+  const totalOkay = Math.abs(liveTotal - 100) < 0.0001;
+
   useEffect(() => {
     if (!selectedRateCard) return;
 
-    // Calculate shipping mix total
-    const total = scope.shippingSizeMix.small + scope.shippingSizeMix.medium + scope.shippingSizeMix.large;
-    setShippingMixTotal(total);
+    // When percent strings change, update shippingMixTotal
+    setShippingMixTotal(liveTotal);
 
-    // Check shipping mix normalization
-    const normalized = normalizeShippingSizeMix(scope.shippingSizeMix);
-    if (normalized.wasNormalized) {
-      setNormalizationHint(`Shipping percentages auto-normalized from ${total.toFixed(1)}% to 100%`);
-    } else if (total < 99.5 || total > 100.5) {
-      setNormalizationHint(`Warning: Shipping percentages total ${total.toFixed(1)}% (should be 100%)`);
+    // No auto-normalization, just hint if not 100
+    if (!totalOkay) {
+      setNormalizationHint(`Warning: Shipping percentages total ${liveTotal.toFixed(1)}% (should be 100%)`);
     } else {
       setNormalizationHint('');
     }
 
-    const result = calculateScenario(selectedRateCard, scope);
+    // For calculation, use parsed values
+    const calcScope: ScopeInput = {
+      monthlyOrders: toNumber(monthlyOrders),
+      averageUnitsPerOrder: toNumber(avgUnitsPerOrder),
+      averageOrderValue: toNumber(avgOrderValue),
+      shippingModel: selectedRateCard ? selectedRateCard.prices.shippingAndHandling ? 'standard' : 'customerAccount' : 'standard',
+      storageRequirements: {
+        smallUnits: toNumber(smallUnits),
+        mediumUnits: toNumber(mediumUnits),
+        largeUnits: toNumber(largeUnits),
+        pallets: toNumber(pallets),
+      },
+      shippingSizeMix: {
+        small: toNumber(smallPct),
+        medium: toNumber(mediumPct),
+        large: toNumber(largePct),
+      },
+    };
+    const result = calculateScenario(selectedRateCard, calcScope);
     setScenarioResult(result);
-  }, [selectedRateCard, scope]);
+  }, [selectedRateCard, smallPct, mediumPct, largePct, monthlyOrders, avgUnitsPerOrder, avgOrderValue, smallUnits, mediumUnits, largeUnits, pallets]);
 
   // Handler Functions as requested
-  const handleScopeChange = (category: keyof ScopeInput, field: string, value: number | string) => {
-    setScope(prevScope => {
-      // If the category is an object, spread it; otherwise, just set the value
-      if (typeof prevScope[category] === 'object' && prevScope[category] !== null) {
-        return {
-          ...prevScope,
-          [category]: {
-            ...prevScope[category],
-            [field]: value
-          }
-        };
-      } else {
-        return {
-          ...prevScope,
-          [category]: value
-        };
-      }
-    });
+  // Auto-fill from Storage handler
+  const onAutoFillFromStorage = () => {
+    const counts: [number, number, number] = [
+      toNumber(smallUnits),
+      toNumber(mediumUnits),
+      toNumber(largeUnits),
+    ];
+    const [s, m, l] = countsToPercents(counts);
+    setSmallPct(String(s));
+    setMediumPct(String(m));
+    setLargePct(String(l));
   };
 
-  const handleTopLevelScopeChange = (field: keyof ScopeInput, value: number | string) => {
-    setScope(prevScope => ({
-      ...prevScope,
-      [field]: value
-    }));
+  // Tidy % handler
+  const onTidyPercents = () => {
+    const [s, m, l] = normalizePercentsTo100([
+      parsePct(smallPct),
+      parsePct(mediumPct),
+      parsePct(largePct),
+    ]);
+    setSmallPct(String(s));
+    setMediumPct(String(m));
+    setLargePct(String(l));
   };
+  // No-op: all state is now flat
 
   const handleRateCardChange = (rateCard: RateCard) => {
     setSelectedRateCard(rateCard);
@@ -123,7 +164,23 @@ export default function QuoteCalculator({ onQuoteCalculated }: {
       createdAt: new Date().toISOString(),
       rateCardId: selectedRateCard.id,
       rateCardVersion: selectedRateCard.version,
-      scopeInput: scope,
+      scopeInput: {
+        monthlyOrders: toNumber(monthlyOrders),
+        averageUnitsPerOrder: toNumber(avgUnitsPerOrder),
+        averageOrderValue: toNumber(avgOrderValue),
+        shippingModel: selectedRateCard ? selectedRateCard.prices.shippingAndHandling ? 'standard' : 'customerAccount' : 'standard',
+        storageRequirements: {
+          smallUnits: toNumber(smallUnits),
+          mediumUnits: toNumber(mediumUnits),
+          largeUnits: toNumber(largeUnits),
+          pallets: toNumber(pallets),
+        },
+        shippingSizeMix: {
+          small: toNumber(smallPct),
+          medium: toNumber(mediumPct),
+          large: toNumber(largePct),
+        },
+      },
       calculation: scenarioResult
     };
 
@@ -139,7 +196,23 @@ export default function QuoteCalculator({ onQuoteCalculated }: {
       client: clientName || 'Prospect',
       rateCard: `${selectedRateCard.name} ${selectedRateCard.version}`,
       date: new Date().toLocaleDateString(),
-      input: scope,
+      input: {
+        monthlyOrders: toNumber(monthlyOrders),
+        averageUnitsPerOrder: toNumber(avgUnitsPerOrder),
+        averageOrderValue: toNumber(avgOrderValue),
+        shippingModel: selectedRateCard ? selectedRateCard.prices.shippingAndHandling ? 'standard' : 'customerAccount' : 'standard',
+        storageRequirements: {
+          smallUnits: toNumber(smallUnits),
+          mediumUnits: toNumber(mediumUnits),
+          largeUnits: toNumber(largeUnits),
+          pallets: toNumber(pallets),
+        },
+        shippingSizeMix: {
+          small: toNumber(smallPct),
+          medium: toNumber(mediumPct),
+          large: toNumber(largePct),
+        },
+      },
       calculation: scenarioResult,
       total: formatCurrency(scenarioResult.finalMonthlyCostCents)
     };
@@ -205,7 +278,7 @@ export default function QuoteCalculator({ onQuoteCalculated }: {
               <Calculator size={20} />
               Quote Calculator
             </h3>
-            <Button variant="outline" size="sm" onClick={() => setScope(initialScope)}>
+            <Button variant="outline" size="sm" onClick={handleReset}>
               Reset
             </Button>
           </div>
@@ -251,35 +324,39 @@ export default function QuoteCalculator({ onQuoteCalculated }: {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Monthly Orders</label>
-              <Input
-                type="number"
-                className="w-full px-3 py-2"
-                min="0"
-                value={scope.monthlyOrders}
-                onChange={e => handleTopLevelScopeChange('monthlyOrders', parseInt(e.target.value) || 0)}
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                className="w-full rounded-lg border px-3 py-2 text-right"
+                value={monthlyOrders}
+                onChange={e => setMonthlyOrders(e.target.value)}
               />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Avg Units / Order</label>
-              <Input
-                type="number"
-                className="w-full px-3 py-2"
-                step="0.1"
-                min="0"
-                value={scope.averageUnitsPerOrder}
-                onChange={e => handleTopLevelScopeChange('averageUnitsPerOrder', parseFloat(e.target.value) || 0)}
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
+                className="w-full rounded-lg border px-3 py-2 text-right"
+                value={avgUnitsPerOrder}
+                onChange={e => setAvgUnitsPerOrder(e.target.value)}
               />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Avg Order Value ($)</label>
-              <Input
-                type="number"
-                className="w-full px-3 py-2"
-                step="0.01"
-                min="0"
-                value={scope.averageOrderValue}
-                onChange={e => handleTopLevelScopeChange('averageOrderValue', parseFloat(e.target.value) || 0)}
-              />
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className="w-full rounded-lg border pl-6 pr-3 py-2 text-right"
+                  value={avgOrderValue}
+                  onChange={e => setAvgOrderValue(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
@@ -288,8 +365,8 @@ export default function QuoteCalculator({ onQuoteCalculated }: {
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Shipping Model</label>
               <Select
-                value={scope.shippingModel}
-                onValueChange={value => handleTopLevelScopeChange('shippingModel', value)}
+                value={selectedRateCard ? (selectedRateCard.prices.shippingAndHandling ? 'standard' : 'customerAccount') : 'standard'}
+                onValueChange={() => { }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -308,42 +385,46 @@ export default function QuoteCalculator({ onQuoteCalculated }: {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Small Units</label>
-                <Input
-                  type="number"
-                  className="w-full px-3 py-2"
-                  min="0"
-                  value={scope.storageRequirements.smallUnits}
-                  onChange={e => handleScopeChange('storageRequirements', 'smallUnits', parseInt(e.target.value) || 0)}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  value={smallUnits}
+                  onChange={e => setSmallUnits(e.target.value)}
                 />
               </div>
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Medium Units</label>
-                <Input
-                  type="number"
-                  className="w-full px-3 py-2"
-                  min="0"
-                  value={scope.storageRequirements.mediumUnits}
-                  onChange={e => handleScopeChange('storageRequirements', 'mediumUnits', parseInt(e.target.value) || 0)}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  value={mediumUnits}
+                  onChange={e => setMediumUnits(e.target.value)}
                 />
               </div>
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Large Units</label>
-                <Input
-                  type="number"
-                  className="w-full px-3 py-2"
-                  min="0"
-                  value={scope.storageRequirements.largeUnits}
-                  onChange={e => handleScopeChange('storageRequirements', 'largeUnits', parseInt(e.target.value) || 0)}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  value={largeUnits}
+                  onChange={e => setLargeUnits(e.target.value)}
                 />
               </div>
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Pallets</label>
-                <Input
-                  type="number"
-                  className="w-full px-3 py-2"
-                  min="0"
-                  value={scope.storageRequirements.pallets}
-                  onChange={e => handleScopeChange('storageRequirements', 'pallets', parseInt(e.target.value) || 0)}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  value={pallets}
+                  onChange={e => setPallets(e.target.value)}
                 />
               </div>
             </div>
@@ -352,56 +433,65 @@ export default function QuoteCalculator({ onQuoteCalculated }: {
           {/* Shipping Size Mix */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">Shipping Size Mix (%)</label>
-              <span
-                className={`text-xs font-medium ${Math.abs(shippingMixTotal - 100) < 0.1
-                  ? 'text-green-600'
-                  : shippingMixTotal >= 99.5 && shippingMixTotal <= 100.5
-                    ? 'text-amber-600'
-                    : 'text-red-600'
-                  }`}
-              >
-                Total: {shippingMixTotal.toFixed(1)}%
-              </span>
+              <label className="text-sm font-medium">Shipping Size Mix (%)</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onAutoFillFromStorage}
+                  className="px-3 py-1.5 rounded-lg border hover:bg-gray-50"
+                  title="Fill from Storage counts"
+                >
+                  Auto-fill from Storage
+                </button>
+                <button
+                  type="button"
+                  onClick={onTidyPercents}
+                  className="px-3 py-1.5 rounded-lg border hover:bg-gray-50"
+                  title="Normalize to 100%"
+                >
+                  Tidy %
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Small (%)</label>
-                <Input
-                  type="number"
-                  className="w-full px-3 py-2"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={scope.shippingSizeMix.small}
-                  onChange={e => handleScopeChange('shippingSizeMix', 'small', parseFloat(e.target.value) || 0)}
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  value={smallPct}
+                  onChange={e => setSmallPct(e.target.value)}
                 />
               </div>
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Medium (%)</label>
-                <Input
-                  type="number"
-                  className="w-full px-3 py-2"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={scope.shippingSizeMix.medium}
-                  onChange={e => handleScopeChange('shippingSizeMix', 'medium', parseFloat(e.target.value) || 0)}
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  value={mediumPct}
+                  onChange={e => setMediumPct(e.target.value)}
                 />
               </div>
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Large (%)</label>
-                <Input
-                  type="number"
-                  className="w-full px-3 py-2"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={scope.shippingSizeMix.large}
-                  onChange={e => handleScopeChange('shippingSizeMix', 'large', parseFloat(e.target.value) || 0)}
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-right"
+                  value={largePct}
+                  onChange={e => setLargePct(e.target.value)}
                 />
               </div>
             </div>
+            <p className={`text-sm mt-1 ${totalOkay ? 'text-emerald-600' : 'text-red-600'}`}>
+              Total: {Number.isFinite(liveTotal) ? `${liveTotal.toFixed(1)}%` : '--'}
+              {!totalOkay && ' (should be 100%)'}
+            </p>
             {normalizationHint && (
               <p className="text-xs text-gray-500 mt-1">{normalizationHint}</p>
             )}

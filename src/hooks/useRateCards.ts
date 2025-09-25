@@ -7,7 +7,7 @@ export function useRateCards() {
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        fetch('/api/ratecards')
+        fetch('/api/rate-cards')
             .then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to load')))
             .then(setData)
             .catch(setError)
