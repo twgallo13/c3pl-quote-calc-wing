@@ -9,14 +9,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Save } from 'lucide-react';
 import { ScopeInput, RateCard, QuoteCalculation } from '@/lib/types';
 import { calculateQuote } from '@/lib/calculator';
-import { sampleRateCards } from '@/lib/sampleData';
-import { createRateCard } from '@/lib/api';
+import { fetchRateCards, createRateCard } from '@/lib/api';
 import { toast } from 'sonner';
 
-interface ClientHarmonizationToolProps {
-    rateCards: RateCard[];
-    loading: boolean;
-}
+
 
 // Initial empty state for the form  
 const initialScope: ScopeInput = {
@@ -37,11 +33,15 @@ const initialScope: ScopeInput = {
     },
 };
 
-export default function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizationToolProps) {
+export default function ClientHarmonizationTool() {
+    // State hooks for rate cards and loading
+    const [rateCards, setRateCards] = useState<RateCard[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+
     // State hooks for input data  
     const [targetMonthlyPrice, setTargetMonthlyPrice] = useState<number>(0);
     const [scope, setScope] = useState<ScopeInput>(initialScope);
-    const [selectedRateCard, setSelectedRateCard] = useState<RateCard>(rateCards[0] || sampleRateCards[0]);
+    const [selectedRateCard, setSelectedRateCard] = useState<RateCard | null>(null);
 
     // State hooks for results
     const [newCalculatedPrice, setNewCalculatedPrice] = useState<number>(0);
@@ -51,6 +51,27 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
     const [scenarioResult, setScenarioResult] = useState<QuoteCalculation | null>(null);
     const [harmonizedRateCard, setHarmonizedRateCard] = useState<RateCard | null>(null);
     const [saving, setSaving] = useState<boolean>(false);
+
+    // Fetch rate cards on component mount
+    useEffect(() => {
+        const loadRateCards = async () => {
+            try {
+                setLoading(true);
+                const { rateCards: fetchedRateCards } = await fetchRateCards();
+                setRateCards(fetchedRateCards);
+                if (fetchedRateCards.length > 0) {
+                    setSelectedRateCard(fetchedRateCards[0]);
+                }
+            } catch (error) {
+                console.error('Failed to load rate cards:', error);
+                toast.error('Failed to load rate cards');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadRateCards();
+    }, []);
 
     // Handler Functions for scope changes
     const handleScopeChange = (category: keyof ScopeInput, field: string, value: number | string) => {
@@ -388,7 +409,7 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
                             <div className="space-y-2">
                                 <Label htmlFor="rate-card-select">Select Rate Card</Label>
                                 <Select
-                                    value={selectedRateCard.id}
+                                    value={selectedRateCard?.id || ''}
                                     onValueChange={(value) => {
                                         const rateCard = rateCards.find(rc => rc.id === value);
                                         if (rateCard) handleRateCardChange(rateCard);
