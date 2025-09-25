@@ -97,7 +97,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="harmonization">
-            <ClientHarmonizationTool 
+            <ClientHarmonizationTool
               rateCards={rateCards}
               loading={loading}
             />
