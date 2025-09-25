@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "vite",
         "kill": "fuser -k 5000/tcp",
-        "build": "tsc -b --noCheck && vite build",
+        "build": "pnpm build:packages && tsc -b --noCheck && vite build",
         "lint": "eslint .",
         "optimize": "vite optimize",
         "preview": "vite preview",
@@ -14,15 +14,18 @@
         "db:generate": "prisma generate",
         "db:studio": "prisma studio",
         "db:seed": "ts-node prisma/seed.ts",
-        "db:seed:node": "node prisma/seed.mjs"
+        "db:seed:node": "node prisma/seed.mjs",
+        "build:packages": "pnpm --filter @momentum/version build && pnpm --filter @momentum/calc build",
+        "clean:packages": "pnpm --filter @momentum/version clean && pnpm --filter @momentum/calc clean"
     },
     "dependencies": {
         "@github/spark": "^0.39.0",
-        "@prisma/client": "^6.16.2",
         "@heroicons/react": "^2.2.0",
         "@hookform/resolvers": "^4.1.3",
+        "@momentum/version": "workspace:*",
         "@octokit/core": "^6.1.4",
         "@phosphor-icons/react": "^2.1.7",
+        "@prisma/client": "^6.16.2",
         "@radix-ui/colors": "^3.0.0",
         "@radix-ui/react-accordion": "^1.2.3",
         "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -84,6 +87,7 @@
     "devDependencies": {
         "@eslint/js": "^9.21.0",
         "@tailwindcss/postcss": "^4.1.8",
+        "@types/node": "^20.19.17",
         "@types/react": "^18.3.10",
         "@types/react-dom": "^18.3.4",
         "@vitejs/plugin-react": "^4.3.4",
@@ -93,15 +97,17 @@
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
         "prisma": "^6.16.2",
-        "ts-node": "^10.9.2",
+        "rimraf": "^5.0.0",
         "tailwindcss": "^4.1.11",
+        "ts-node": "^10.9.2",
         "typescript": "~5.7.2",
         "typescript-eslint": "^8.38.0",
         "vite": "^6.3.5"
     },
     "workspaces": {
         "packages": [
-            "packages/*"
+            "packages/*",
+            "apps/*"
         ]
     },
     "pnpm": {

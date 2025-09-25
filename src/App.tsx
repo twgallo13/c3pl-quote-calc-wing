@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, ClockCounterClockwise } from '@phosphor-icons/react';
+import { Calculator, ClockCounterClockwise, TestTube } from '@phosphor-icons/react';
 import QuoteCalculator from './components/QuoteCalculator';
 import QuoteHistory from './components/QuoteHistory';
+import QuotePage from './pages/quote';
 import type { Quote } from './lib/types';
+import { APP_VERSION } from '@momentum/version';
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>('calculator');
@@ -29,7 +31,7 @@ function App() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="calculator" className="flex items-center gap-2">
               <Calculator size={18} />
               Quote Calculator
@@ -38,17 +40,34 @@ function App() {
               <ClockCounterClockwise size={18} />
               Quote History
             </TabsTrigger>
+            <TabsTrigger value="quote" className="flex items-center gap-2">
+              <TestTube size={18} />
+              API Preview
+            </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="calculator">
             <QuoteCalculator onQuoteCalculated={handleQuoteCalculated} />
           </TabsContent>
-          
+
           <TabsContent value="history">
             <QuoteHistory />
           </TabsContent>
+
+          <TabsContent value="quote">
+            <QuotePage />
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Footer with version */}
+      <footer className="mt-16 py-4 border-t border-border">
+        <div className="container mx-auto px-4">
+          <div id="app-version" className="text-center text-sm text-muted-foreground">
+            Momentum {APP_VERSION}
+          </div>
+        </div>
+      </footer>
 
       <Toaster />
     </div>
