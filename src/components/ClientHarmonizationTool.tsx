@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
-import { ScopeInput, RateCard } from '@/lib/types';
+import { ScopeInput, RateCard, QuoteCalculation } from '@/lib/types';
 import { calculateQuote } from '@/lib/calculator';
 import { sampleRateCards } from '@/lib/sampleData';
 
 interface ClientHarmonizationToolProps {
-  rateCards: RateCard[];
-  loading: boolean;
+    rateCards: RateCard[];
+    loading: boolean;
 }
 
 // Initial empty state for the form  
@@ -35,14 +36,17 @@ const initialScope: ScopeInput = {
 };
 
 export default function ClientHarmonizationTool({ rateCards, loading }: ClientHarmonizationToolProps) {
-  // State hooks for input data  
-  const [targetMonthlyPrice, setTargetMonthlyPrice] = useState<number>(0);
-  const [scope, setScope] = useState<ScopeInput>(initialScope);
-  const [selectedRateCard, setSelectedRateCard] = useState<RateCard>(rateCards[0] || sampleRateCards[0]);    // State hooks for results
+    // State hooks for input data  
+    const [targetMonthlyPrice, setTargetMonthlyPrice] = useState<number>(0);
+    const [scope, setScope] = useState<ScopeInput>(initialScope);
+    const [selectedRateCard, setSelectedRateCard] = useState<RateCard>(rateCards[0] || sampleRateCards[0]);
+
+    // State hooks for results
     const [newCalculatedPrice, setNewCalculatedPrice] = useState<number>(0);
     const [difference, setDifference] = useState<number>(0);
     const [requiredLoyaltyDiscount, setRequiredLoyaltyDiscount] = useState<number>(0);
     const [analysisCompleted, setAnalysisCompleted] = useState<boolean>(false);
+    const [scenarioResult, setScenarioResult] = useState<QuoteCalculation | null>(null);
 
     // Handler Functions for scope changes
     const handleScopeChange = (category: keyof ScopeInput, field: string, value: number | string) => {
@@ -95,6 +99,7 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
         setNewCalculatedPrice(newPrice);
         setDifference(delta);
         setRequiredLoyaltyDiscount(requiredDiscountPercent);
+        setScenarioResult(result);
         setAnalysisCompleted(true);
     };
 
@@ -371,11 +376,47 @@ export default function ClientHarmonizationTool({ rateCards, loading }: ClientHa
                 <div className="space-y-6">
                     <h2 className="text-xl font-semibold">Analysis Results</h2>
 
-                    {analysisCompleted ? (
+                    {analysisCompleted && scenarioResult ? (
                         <>
+                            {/* Detailed Results Table */}
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Harmonization Results</CardTitle>
+                                    <CardTitle>Cost Breakdown Analysis</CardTitle>
+                                    <CardDescription>Detailed comparison of service costs under the new pricing model</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Service Category</TableHead>
+                                                <TableHead className="text-right">New Model Est. Cost</TableHead>
+                                                <TableHead>Notes</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {scenarioResult.lineItems.map((item, index) => (
+                                                <TableRow key={index}>
+                                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(item.costCents / 100)}</TableCell>
+                                                    <TableCell className="text-muted-foreground">-</TableCell>
+                                                </TableRow>
+                                            ))}
+                                            {/* Subtotal Row */}
+                                            <TableRow className="border-t-2 font-bold">
+                                                <TableCell className="font-bold">Subtotal</TableCell>
+                                                <TableCell className="text-right font-bold">{formatCurrency(scenarioResult.totalMonthlyCostCents / 100)}</TableCell>
+                                                <TableCell>-</TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+
+                            {/* Summary Section */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Harmonization Summary</CardTitle>
+                                    <CardDescription>Key metrics for pricing migration decision</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-1 gap-4">
